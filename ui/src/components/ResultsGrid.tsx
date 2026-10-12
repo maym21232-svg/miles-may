@@ -112,7 +112,13 @@ export function ResultsGrid({ rows, columns, selected, onSelect, sort, onSort, h
             <button className="mobile-result" type="button" key={symbol} onClick={() => onSelect(symbol)}>
               <span className="mobile-result-top">
                 <span><strong>{symbol}</strong><small>{String(row.name ?? "公司名称未知")}</small><em>{sectorLabel(row.sector)}</em></span>
-                <span className="mobile-score">{researchValue("composite_rank", row.composite_rank)}<small>综合分位</small></span>
+                <span className="mobile-score">
+                  {researchValue("composite_rank", row.composite_rank)}<small>综合分位</small>
+                  {typeof row.composite_rank === "number" && Number.isFinite(row.composite_rank) &&
+                    <span className="mobile-score-track" aria-hidden="true">
+                      <span style={{ width: `${Math.max(0, Math.min(100, row.composite_rank))}%` }} />
+                    </span>}
+                </span>
               </span>
               <span className="mobile-result-metrics">
                 <span>净资产收益率 <b>{researchValue("return_on_equity", row.return_on_equity)}</b></span>

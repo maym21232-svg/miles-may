@@ -64,12 +64,21 @@ export function CoverageBanner() {
     (data.prices?.typical_symbols ?? 0) > (data.prices?.symbols ?? 0) / 2;
   return (
     <div className="coverage-banner" role="note">
-      快照生成 {refreshed} · 覆盖 {data.snapshot_symbols.toLocaleString("zh-CN")} 家美股上市公司
-      {data.prices?.typical_date && data.prices.typical_date !== data.prices.max_date
-        ? <> · {data.prices.typical_symbols && data.prices.typical_symbols > data.prices.symbols / 2 ? "多数个股" : "个股常见"}收盘截至 {data.prices.typical_date} · 个别最新 {data.prices.max_date}</>
-        : data.prices?.max_date && <> · 最新收盘 {data.prices.max_date}</>}
-      {stale && <> · 数据超过 4 天未更新，请核对更新任务</>}
-      {stalePrices && <> · 多数价格已超过 14 天，勿当作当前行情</>}
+      <details className="coverage-details">
+        <summary>
+          <span className={`coverage-indicator${stale || stalePrices ? " is-stale" : ""}`} aria-hidden="true" />
+          <strong>数据快照</strong>
+          <span>覆盖 {data.snapshot_symbols.toLocaleString("zh-CN")} 家</span>
+          {(stale || stalePrices) && <span className="coverage-alert">{stalePrices ? "多数行情滞后" : "快照待更新"}</span>}
+        </summary>
+        <p>快照生成 {refreshed} · 覆盖 {data.snapshot_symbols.toLocaleString("zh-CN")} 家美股上市公司
+          {data.prices?.typical_date && data.prices.typical_date !== data.prices.max_date
+            ? <> · {data.prices.typical_symbols && data.prices.typical_symbols > data.prices.symbols / 2 ? "多数个股" : "个股常见"}收盘截至 {data.prices.typical_date} · 个别最新 {data.prices.max_date}</>
+            : data.prices?.max_date && <> · 最新收盘 {data.prices.max_date}</>}
+          {stale && <> · 数据超过 4 天未更新，请核对更新任务</>}
+          {stalePrices && <> · 多数价格已超过 14 天，勿当作当前行情</>}
+        </p>
+      </details>
       {newer && <button className="data-refresh" onClick={() => window.location.reload()}>有新数据，刷新页面</button>}
     </div>
   );

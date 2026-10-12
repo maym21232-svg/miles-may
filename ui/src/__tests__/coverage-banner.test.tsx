@@ -51,6 +51,11 @@ describe("CoverageBanner", () => {
     });
     render(<CoverageBanner />);
     expect(await screen.findByText(/多数价格已超过 14 天/)).toHaveTextContent("勿当作当前行情");
+    const details = screen.getByText("数据快照").closest("details")!;
+    expect(details.open).toBe(false);
+    expect(screen.getByText("多数行情滞后")).toBeInTheDocument();
+    fireEvent.click(details.querySelector("summary")!);
+    expect(details.open).toBe(true);
   });
 
   it("offers reload when prices advance without a new financial snapshot", async () => {
