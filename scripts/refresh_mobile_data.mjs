@@ -6,7 +6,6 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const project = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const root = resolve(project, "..");
 const dataDir = join(project, "ui", "public", "data");
 const DEFAULT_ORIGIN = "https://maxgfr.github.io/crible/data/";
 const CHUNK_SIZE = 4 * 1024 * 1024;

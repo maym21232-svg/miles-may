@@ -9,10 +9,10 @@ import time
 import duckdb
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description="Build the US-listed mobile data bundle")
 parser.add_argument("--source-dir", type=Path, default=ROOT / ".source-data")
-parser.add_argument("--output-dir", type=Path, default=ROOT / "crible-main" / "ui" / "public" / "data")
+parser.add_argument("--output-dir", type=Path, default=ROOT / "ui" / "public" / "data")
 args = parser.parse_args()
 SOURCE = args.source_dir.resolve()
 OUTPUT = args.output_dir.resolve()
@@ -146,7 +146,7 @@ columns = [
 ]
 screens = {}
 featured = set()
-quick_screens = json.loads((ROOT / "crible-main" / "ui" / "src" / "quick-screens.json").read_text(encoding="utf-8"))
+quick_screens = json.loads((ROOT / "ui" / "src" / "quick-screens.json").read_text(encoding="utf-8"))
 for screen in quick_screens:
     query = screen["query"]
     screen_rows = records(
