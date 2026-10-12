@@ -1579,6 +1579,18 @@ table.results .symlink { font-size: 13px; font-weight: 700; }
 .full-analysis { border-top: 1px solid color-mix(in srgb, var(--color-muted) 24%, transparent); }
 .full-analysis summary { padding: 16px 2px; color: var(--color-primary); cursor: pointer; font-size: 13px; font-weight: 600; }
 .full-analysis[open] summary { border-bottom: 1px solid color-mix(in srgb, var(--color-muted) 24%, transparent); }
+
+@media (max-width: 640px) {
+  .period-table-scroll { max-width: 100%; overflow-x: auto; }
+  .period-table-scroll table { min-width: max-content; }
+  .period-table-scroll th:first-child,
+  .period-table-scroll td:first-child {
+    position: sticky;
+    left: 0;
+    background: var(--color-bg-raised);
+    z-index: 1;
+  }
+}
 .simple-status { flex: 1; overflow: auto; width: min(100%, 780px); margin: 0 auto; padding: 28px 20px 60px; }
 .simple-status h1 { margin: 0 0 22px; font-size: 20px; }
 .simple-status h2 { margin: 28px 0 10px; font-size: 15px; }

@@ -50,10 +50,12 @@ export function PeriodTable({
   children,
 }: HeaderProps & { children: ReactNode }) {
   return (
-    <table>
-      <PeriodHeader periods={periods} sparse={sparse} labels={labels} />
-      <tbody>{children}</tbody>
-    </table>
+    <div className="period-table-scroll">
+      <table>
+        <PeriodHeader periods={periods} sparse={sparse} labels={labels} />
+        <tbody>{children}</tbody>
+      </table>
+    </div>
   );
 }
 

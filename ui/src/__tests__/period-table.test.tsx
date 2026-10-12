@@ -3,7 +3,8 @@
 // publishes ~4-5 fiscal years and YoY/average metrics need the prior year).
 
 import { describe, expect, it } from "vitest";
-import { STATEMENT_FIELDS, sparsePeriodFlags } from "../components/PeriodTable";
+import { render, screen } from "@testing-library/react";
+import { PeriodTable, STATEMENT_FIELDS, sparsePeriodFlags } from "../components/PeriodTable";
 
 describe("sparsePeriodFlags", () => {
   it("returns an empty list for no periods", () => {
@@ -27,4 +28,13 @@ describe("sparsePeriodFlags", () => {
     expect(sparsePeriodFlags([period], ["net_income"])).toEqual([true]);
     expect(sparsePeriodFlags([period], ["revenue"])).toEqual([false]);
   });
+});
+
+it("keeps wide fiscal tables inside their own scroll container", () => {
+  const { container } = render(
+    <PeriodTable periods={[{ period: "2025" }, { period: "2024" }]}>
+      <tr><td>营业收入</td><td>100</td><td>90</td></tr>
+    </PeriodTable>
+  );
+  expect(container.querySelector(".period-table-scroll table")).toBe(screen.getByRole("table"));
 });

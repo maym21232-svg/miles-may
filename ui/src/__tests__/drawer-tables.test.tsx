@@ -67,7 +67,7 @@ describe("drawer tables — structurally empty columns", () => {
     }
     // every multi-period table's body mutes the same column, not just Statements
     for (const anchor of ["drawer-statements", "drawer-cash", "drawer-growth", "drawer-scores"]) {
-      const table = container.querySelector(`#${anchor} + table`);
+      const table = container.querySelector(`#${anchor} + .period-table-scroll table`);
       const firstRow = table?.querySelector("tbody tr");
       const cells = firstRow ? Array.from(firstRow.querySelectorAll("td")) : [];
       expect(cells.length).toBeGreaterThan(0);
