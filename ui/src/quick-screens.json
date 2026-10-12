@@ -1,0 +1,6 @@
+[
+  { "label": "值得研究", "query": "exchange IN ('NMS','NYQ','NCM','NGM','ASE') AND market_cap >= 1000000000 AND piotroski_f >= 6 AND return_on_equity >= 0.1 AND free_cash_flow > 0" },
+  { "label": "质量优先", "query": "exchange IN ('NMS','NYQ','NCM','NGM','ASE') AND market_cap >= 1000000000 AND piotroski_f >= 7 AND return_on_equity >= 0.15 AND free_cash_flow > 0" },
+  { "label": "现金流", "query": "exchange IN ('NMS','NYQ','NCM','NGM','ASE') AND market_cap >= 1000000000 AND free_cash_flow > 0 AND fcf_conversion >= 0.8" },
+  { "label": "稳健估值", "query": "exchange IN ('NMS','NYQ','NCM','NGM','ASE') AND market_cap >= 1000000000 AND free_cash_flow > 0 AND debt_to_equity_ratio <= 1 AND price_to_earnings_ratio > 0 AND price_to_earnings_ratio <= 25" }
+]

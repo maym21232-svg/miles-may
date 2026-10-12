@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>美股研究</title>
+    <meta name="theme-color" content="#222323" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="美股研究" />
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <link rel="apple-touch-icon" sizes="180x180" href="%BASE_URL%apple-touch-icon.png" />
+    <!-- the sieve wordmark glyph, in forge amber — the tool's own mark -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23e5944a%22><circle cx=%2212%22 cy=%2212%22 r=%229%22 stroke-width=%221.75%22/><g stroke-width=%221.4%22 stroke-dasharray=%223 2.4%22><line x1=%224.5%22 y1=%2215%22 x2=%2215%22 y2=%224.5%22/><line x1=%227%22 y1=%2219%22 x2=%2219%22 y2=%227%22/><line x1=%2211%22 y1=%2221%22 x2=%2221%22 y2=%2211%22/></g></svg>" />
+    <script>
+      // Pre-paint theme resolution (mirrors src/theme.ts) — no flash of wrong theme.
+      (function () {
+        try {
+          var stored = localStorage.getItem("crible-theme");
+          var light =
+            stored === "light" ||
+            (!stored && matchMedia("(prefers-color-scheme: light)").matches);
+          document.documentElement.dataset.theme = light ? "light" : "dark";
+        } catch (e) {
+          document.documentElement.dataset.theme = "dark";
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

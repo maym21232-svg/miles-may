@@ -1,0 +1,387 @@
+// UX critique fixes — every screen is a permalink (#/?q=…&sort=…), sorting
+// and paging run in the engine (never a client-side sort of one page), the
+// grid and search are keyboard-first, presets group in a popover, the query
+// bar autocompletes fields and recalls history, scores are never color-only,
+// and the status observatory stays live.
+
+import { act, fireEvent, render, screen as rtl, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import App, { PAGE_SIZE } from "../App";
+import { SearchBox } from "../components/SearchBox";
+import { PresetsMenu } from "../components/PresetsMenu";
+import { StatusView } from "../components/StatusView";
+
+const ROWS = [
+  { symbol: "AIR.PA", name: "Airbus", country: "FR", sector: "Industrials", piotroski_f: 8 },
+  { symbol: "SAP.DE", name: "SAP", country: "DE", sector: "Tech", piotroski_f: 7 },
+];
+
+const screenCalls: { query: string; sort: string | null; page: number }[] = [];
+
+function mockApi(total = 2) {
+  screenCalls.length = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url) === "/api/screen") {
+        const body = JSON.parse(String(init?.body ?? "{}"));
+        screenCalls.push({ query: body.query, sort: body.sort ?? null, page: body.page });
+        return { ok: true, status: 200, json: async () => ({ rows: ROWS, total, page: body.page, tookMs: 1 }) };
+      }
+      if (String(url) === "/api/presets") {
+        return {
+          ok: true, status: 200,
+          json: async () => [
+            { id: "piotroski-strong", name: "Piotroski strong", description: "d", dsl: "piotroski_f >= 7" },
+            { id: "top-ranked", name: "Top ranked", description: "d", dsl: "composite_rank >= 80" },
+          ],
+        };
+      }
+      if (String(url) === "/api/status") {
+        return { ok: true, status: 200, json: async () => ({ universe: 8, snapshot: true }) };
+      }
+      if (String(url) === "/api/fields") {
+        return {
+          ok: true, status: 200,
+          json: async () => [
+            { name: "piotroski_f", type: "number" },
+            { name: "altman_z", type: "number" },
+            { name: "return_on_equity", type: "number" },
+          ],
+        };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    }),
+  );
+}
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+  window.location.hash = "#/";
+  localStorage.clear();
+});
+
+afterEach(() => {
+  window.location.hash = "#/";
+});
+
+describe("screen permalinks", () => {
+  it("shows a visible retry when the initial data request fails", async () => {
+    mockApi();
+    const baseFetch = globalThis.fetch;
+    let failed = false;
+    vi.stubGlobal("fetch", vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url) === "/api/screen" && !failed) {
+        failed = true;
+        throw new Error("offline");
+      }
+      return baseFetch(url, init);
+    }));
+    render(<App />);
+    expect(await rtl.findByRole("alert")).toHaveTextContent("数据加载失败");
+    fireEvent.click(rtl.getByRole("button", { name: "重试" }));
+    await waitFor(() => expect(rtl.getAllByText("AIR.PA").length).toBeGreaterThan(0));
+  });
+
+  it("restores query and sort from the URL on load", async () => {
+    window.location.hash = "#/?q=altman_z%20%3E%202.99&sort=-altman_z";
+    mockApi();
+    render(<App />);
+    await waitFor(() => expect(screenCalls.length).toBe(1));
+    expect(screenCalls[0]).toEqual({ query: "altman_z > 2.99", sort: "-altman_z", page: 1 });
+    expect((rtl.getByLabelText("筛选表达式") as HTMLInputElement).value).toBe("altman_z > 2.99");
+  });
+
+  it("writes the ran query into the hash so the screen is shareable", async () => {
+    mockApi();
+    render(<App />);
+    await waitFor(() => expect(rtl.getAllByText("AIR.PA").length).toBeGreaterThan(0));
+    // blank default: q= is meaningful (full snapshot), default sort is explicit
+    await waitFor(() => expect(window.location.hash).toContain("q="));
+    expect(window.location.hash).toContain("sort=-composite_rank");
+  });
+
+  it("defaults to the US research screen sorted by composite rank", async () => {
+    mockApi();
+    render(<App />);
+    await waitFor(() => expect(screenCalls.length).toBe(1));
+    expect(screenCalls[0]).toEqual({ query: expect.stringContaining("exchange IN"), sort: "-composite_rank", page: 1 });
+  });
+});
+
+describe("engine sort + pagination", () => {
+  it("clicking a header re-screens with an engine sort, descending first", async () => {
+    mockApi();
+    render(<App />);
+    await waitFor(() => expect(screenCalls.length).toBe(1));
+
+    fireEvent.click(rtl.getByRole("button", { name: /^财务质量/ }));
+    await waitFor(() => expect(screenCalls.length).toBe(2));
+    expect(screenCalls[1]).toEqual({ query: expect.stringContaining("exchange IN"), sort: "-piotroski_f", page: 1 });
+    await waitFor(() =>
+      expect(document.querySelector('th[aria-sort="descending"]')).not.toBeNull());
+
+    fireEvent.click(rtl.getByRole("button", { name: /^财务质量/ }));
+    await waitFor(() => expect(screenCalls.length).toBe(3));
+    expect(screenCalls[2].sort).toBe("piotroski_f"); // second click = ascending
+  });
+
+  it("pages through large result sets in the engine", async () => {
+    mockApi(PAGE_SIZE * 2 + 1); // 3 pages
+    render(<App />);
+    await waitFor(() => expect(screenCalls.length).toBe(1));
+    expect(rtl.getByText("1 / 3")).toBeInTheDocument();
+
+    fireEvent.click(rtl.getByRole("button", { name: "下一页" }));
+    await waitFor(() => expect(screenCalls.length).toBe(2));
+    expect(screenCalls[1].page).toBe(2);
+    expect(rtl.getByText("2 / 3")).toBeInTheDocument();
+  });
+
+  it("renders symbols as real links carrying the current screen", async () => {
+    mockApi();
+    render(<App />);
+    await waitFor(() => expect(rtl.getAllByText("AIR.PA").length).toBeGreaterThan(0));
+    const link = rtl.getByRole("link", { name: "AIR.PA" }) as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toContain("#/company/AIR.PA");
+    // the blank screen travels too: q= (meaningful) + the explicit sort
+    expect(link.getAttribute("href")).toContain("q=");
+    expect(link.getAttribute("href")).toContain("sort=-composite_rank");
+  });
+});
+
+describe("query bar accelerators", () => {
+  it("autocompletes field names — Tab inserts the suggestion", async () => {
+    mockApi();
+    render(<App />);
+    await waitFor(() => expect(screenCalls.length).toBe(1));
+    const input = rtl.getByLabelText("筛选表达式") as HTMLInputElement;
+
+    fireEvent.change(input, { target: { value: "altm" } });
+    await waitFor(() => expect(rtl.getByText("altman_z")).toBeInTheDocument());
+    fireEvent.keyDown(input, { key: "Tab" });
+    expect(input.value).toBe("altman_z ");
+    expect(rtl.queryByText(/Altman Z ·/)).not.toBeInTheDocument(); // dropdown closed
+  });
+
+  it("ArrowUp recalls the last ran query when no suggestions are open", async () => {
+    mockApi();
+    render(<App />);
+    await waitFor(() => expect(screenCalls.length).toBe(1));
+    const input = rtl.getByLabelText("筛选表达式") as HTMLInputElement;
+
+    // the blank default is never pushed to history — seed a real query first
+    fireEvent.change(input, { target: { value: "piotroski_f >= 7" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(screenCalls.length).toBe(2));
+
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.keyDown(input, { key: "ArrowUp" });
+    expect(input.value).toBe("piotroski_f >= 7");
+  });
+
+  it("scores carry a non-color verdict glyph", async () => {
+    mockApi();
+    render(<App />);
+    await waitFor(() => expect(rtl.getAllByText(/✓/).length).toBeGreaterThan(0)); // piotroski 8 ≥ 7
+  });
+});
+
+describe("status observatory", () => {
+  it("auto-refreshes every 30 s and shows when the view was refreshed", async () => {
+    let calls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        // the merged page also fetches /api/providers — only count status polls
+        if (String(url) === "/api/providers") {
+          return { ok: true, status: 200, json: async () => [] };
+        }
+        calls += 1;
+        return {
+          ok: true, status: 200,
+          json: async () => ({
+            universe: 8, snapshot: true,
+            ingest: { coverage_pct: 1.2, crawled: 100, universe: 8, ts: 1_784_000_000 },
+          }),
+        };
+      }),
+    );
+    vi.useFakeTimers();
+    try {
+      render(<StatusView pref="dark" onPref={() => {}} />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0); // flush the initial load
+      });
+      expect(calls).toBe(1);
+      expect(rtl.getByText(/auto-refreshes every 30 s/)).toBeInTheDocument();
+      expect(rtl.getByText(/crawl heartbeat/)).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000);
+      });
+      expect(calls).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("search keyboard support", () => {
+  it("ArrowDown + Enter picks the active option", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true, status: 200,
+        json: async () => [
+          { symbol: "AIR.PA", name: "Airbus", country: "FR", sector: "Industrials" },
+          { symbol: "AIRBNB", name: "Airbnb", country: "US", sector: "Consumer" },
+        ],
+      })),
+    );
+    const onPick = vi.fn();
+    render(<SearchBox onPick={onPick} />);
+    const input = rtl.getByLabelText("搜索公司或股票代码");
+    fireEvent.change(input, { target: { value: "air" } });
+    await waitFor(() => expect(rtl.getByRole("listbox")).toBeInTheDocument());
+
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onPick).toHaveBeenCalledWith("AIRBNB");
+    expect(input.getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
+// App-level mock where the screen rows carry the curated keys — the grid
+// only renders columns present in rows[0] (availableColumns)
+function mockPresetColumnsApi() {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) => {
+      const path = String(url).split("?")[0];
+      if (path === "/api/screen") {
+        return {
+          ok: true, status: 200,
+          json: async () => ({
+            rows: [{
+              symbol: "AIR.PA", name: "Airbus", country: "FR", sector: "Industrials",
+              composite_rank: 91, quality_rank: 88, piotroski_f: 8, fcf_margin: 0.12,
+              market_cap_growth: null, // always-NaN column — must stay hidden
+            }],
+            total: 1, page: 1, tookMs: 1,
+          }),
+        };
+      }
+      if (path === "/api/presets") {
+        return {
+          ok: true, status: 200,
+          json: async () => [{
+            id: "top-ranked", name: "Top ranked", description: "d",
+            dsl: "composite_rank >= 80", columns: ["composite_rank", "quality_rank"],
+          }],
+        };
+      }
+      if (path === "/api/status") {
+        return { ok: true, status: 200, json: async () => ({ universe: 8, snapshot: true }) };
+      }
+      if (path === "/api/fields") return { ok: true, status: 200, json: async () => [] };
+      if (path === "/api/providers") return { ok: true, status: 200, json: async () => [] };
+      return { ok: false, status: 404, json: async () => ({}) };
+    }),
+  );
+}
+
+describe("presets popover", () => {
+  it("groups presets, previews their DSL, and picks one", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        String(url) === "/api/presets"
+          ? {
+              ok: true, status: 200,
+              json: async () => [
+                { id: "piotroski-strong", name: "Piotroski strong", description: "d", dsl: "piotroski_f >= 7" },
+                { id: "top-ranked", name: "Top ranked", description: "d", dsl: "composite_rank >= 80" },
+              ],
+            }
+          : { ok: false, status: 404, json: async () => ({}) },
+      ),
+    );
+    const onPick = vi.fn();
+    render(<PresetsMenu onPick={onPick} currentQuery="roe > 0.15" activeDsl="piotroski_f >= 7" />);
+
+    const trigger = await rtl.findByRole("button", { name: /已保存：Piotroski strong/ });
+    fireEvent.click(trigger);
+    expect(rtl.getByRole("group", { name: "财务评分" })).toBeInTheDocument();
+    expect(rtl.getByRole("group", { name: "排名" })).toBeInTheDocument();
+    expect(rtl.getByText("composite_rank >= 80")).toBeInTheDocument(); // DSL visible, never hidden
+
+    fireEvent.click(rtl.getByText("Top ranked"));
+    // the whole preset travels: the DSL to run + the columns it wants visible
+    expect(onPick).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "top-ranked", dsl: "composite_rank >= 80" }),
+    );
+  });
+
+  it("picking a curated preset swaps the grid columns to its set", async () => {
+    mockPresetColumnsApi();
+    render(<App />);
+    await waitFor(() => expect(rtl.getAllByText("AIR.PA").length).toBeGreaterThan(0));
+    expect(rtl.getByRole("button", { name: /^财务质量/ })).toBeInTheDocument(); // a default
+
+    fireEvent.click(rtl.getByRole("button", { name: "高级筛选" }));
+    fireEvent.click(await rtl.findByRole("button", { name: "已保存条件" }));
+    fireEvent.click(rtl.getByText("Top ranked"));
+    await waitFor(() =>
+      expect(rtl.getByRole("button", { name: /^Quality rank/ })).toBeInTheDocument());
+    expect(rtl.getByRole("button", { name: /^综合分位/ })).toBeInTheDocument();
+    // curated columns REPLACE the defaults; identity stays
+    expect(rtl.queryByRole("button", { name: /^财务质量/ })).not.toBeInTheDocument();
+    expect(rtl.getByRole("button", { name: /^公司/ })).toBeInTheDocument();
+  });
+
+  it("a hand-typed query surfaces the fields it references (union)", async () => {
+    mockPresetColumnsApi();
+    render(<App />);
+    await waitFor(() => expect(rtl.getAllByText("AIR.PA").length).toBeGreaterThan(0));
+    expect(rtl.queryByRole("button", { name: /^自由现金流率/ })).not.toBeInTheDocument();
+
+    const input = rtl.getByLabelText("筛选表达式") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "fcf_margin >= 0.05" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() =>
+      expect(rtl.getByRole("button", { name: /^自由现金流率/ })).toBeInTheDocument());
+    // union path: never removes what was already visible
+    expect(rtl.getByRole("button", { name: /^财务质量/ })).toBeInTheDocument();
+  });
+
+  it("the column picker never offers hidden (always-NaN / duplicate) columns", async () => {
+    mockPresetColumnsApi();
+    render(<App />);
+    await waitFor(() => expect(rtl.getAllByText("AIR.PA").length).toBeGreaterThan(0));
+    fireEvent.click(rtl.getByRole("button", { name: "高级筛选" }));
+    fireEvent.click(rtl.getByRole("button", { name: /^显示指标/ }));
+    expect(rtl.getByText("自由现金流率")).toBeInTheDocument(); // real column offered
+    expect(rtl.queryByText("market_cap_growth")).not.toBeInTheDocument();
+  });
+
+  it("saves and deletes a custom preset inline", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, status: 200, json: async () => [] })),
+    );
+    render(<PresetsMenu onPick={() => {}} currentQuery="fcf_margin >= 0.05" activeDsl={null} />);
+    fireEvent.click(await rtl.findByRole("button", { name: "已保存条件" }));
+
+    fireEvent.change(rtl.getByLabelText("新条件名称"), { target: { value: "Cash cows" } });
+    fireEvent.submit(rtl.getByLabelText("新条件名称").closest("form")!);
+    const custom = rtl.getByRole("group", { name: "我的条件" });
+    expect(within(custom).getByText("Cash cows")).toBeInTheDocument();
+    expect(within(custom).getByText("fcf_margin >= 0.05")).toBeInTheDocument();
+
+    fireEvent.click(rtl.getByRole("button", { name: "删除条件 Cash cows" }));
+    expect(rtl.queryByRole("group", { name: "我的条件" })).not.toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem("crible.custom-presets") ?? "[]")).toEqual([]);
+  });
+});
