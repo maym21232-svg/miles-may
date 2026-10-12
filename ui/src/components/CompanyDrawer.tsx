@@ -19,6 +19,7 @@ import { OfficialDisclosure } from "./OfficialDisclosure";
 import { PeriodRow, PeriodTable, sparsePeriodFlags, STATEMENT_FIELDS } from "./PeriodTable";
 import { PriceChart } from "./PriceChart";
 import { ResearchBrief } from "./ResearchBrief";
+import { ResearchHorizon } from "./ResearchHorizon";
 import { ResearchNotes } from "./ResearchNotes";
 import { SynthesisBlock } from "./SynthesisBlock";
 import { TrendCharts } from "./TrendCharts";
@@ -386,6 +387,7 @@ export function CompanyDrawer({ symbol, onClose, watched = false, onToggleWatchl
           ) : (
             <>
               <ResearchBrief symbol={symbol} detail={detail} />
+              <ResearchHorizon symbol={symbol} detail={detail} />
               <details className="full-analysis" onToggle={(event) => setFullOpen(event.currentTarget.open)}>
                 <summary>查看完整财务分析</summary>
                 {fullOpen && <DrawerSections symbol={symbol} detail={detail} />}

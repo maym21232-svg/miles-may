@@ -10,6 +10,7 @@ import { GROUP_ORDER, STARTER_FILTERS, fieldGroup, fieldLabel, isHiddenField } f
 // otherwise reaches for the price series) with a single self-contained company
 vi.mock("../data", () => ({
   STATIC_MODE: false,
+  prices: async () => [],
   company: async () => ({
     profile: { name: "Acme", country: "FR", sector: "Tech" },
     periods: [

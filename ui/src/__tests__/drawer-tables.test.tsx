@@ -18,6 +18,7 @@ const FULL_2025 = {
 
 vi.mock("../data", () => ({
   STATIC_MODE: false,
+  prices: async () => [],
   company: async () => ({
     profile: { name: "Carrefour SA", country: "FR", sector: "Consumer Staples", currency: "EUR" },
     periods: [
