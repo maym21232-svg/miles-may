@@ -9,7 +9,7 @@ const project = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dataDir = join(project, "ui", "public", "data");
 const DEFAULT_ORIGIN = "https://maxgfr.github.io/crible/data/";
 const CHUNK_SIZE = 4 * 1024 * 1024;
-const BUNDLE_VERSION = 2;
+const BUNDLE_VERSION = 3;
 
 export function needsRefresh(remote, local) {
   if (!local) return true;
@@ -193,6 +193,7 @@ async function runRefresh({ origin, force, check }) {
     const built = JSON.parse(await readFile(join(output, "manifest.json"), "utf8"));
     if (built.bundle_version !== BUNDLE_VERSION || built.generated_at !== remote.generated_at ||
         built.snapshot_symbols < 1000 ||
+        built.mobile_shards !== 256 ||
         (remote.prices?.shards?.length && !built.prices?.bars)) {
       throw new Error("生成结果未通过覆盖量或价格校验，保留现有数据");
     }

@@ -52,8 +52,14 @@ jobs:
         run: |
           test -s ui/dist/data/manifest.json
           test -s ui/dist/data/snapshot.parquet
+          for index in $(seq -w 0 255); do
+            number=$(printf '%03d' "$((10#$index))")
+            test -s "ui/dist/data/companies-$number.json"
+            test -s "ui/dist/data/prices-$number.json"
+          done
           test -s ui/dist/manifest.webmanifest
           test -s ui/dist/sw.js
+          test "$(du -sm ui/dist | cut -f1)" -lt 900
           touch ui/dist/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

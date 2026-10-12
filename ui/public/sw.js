@@ -1,5 +1,6 @@
-const CACHE = "stock-research-shell-v1";
 const scope = self.registration.scope;
+const CACHE_PREFIX = `stock-research-shell:${new URL(scope).pathname}:`;
+const CACHE = `${CACHE_PREFIX}v2`;
 const shell = new URL("offline.html", scope).href;
 
 self.addEventListener("install", (event) => {
@@ -9,7 +10,7 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(Promise.all([
-    caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))),
+    caches.keys().then((keys) => Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE).map((key) => caches.delete(key)))),
     self.clients.claim(),
   ]));
 });

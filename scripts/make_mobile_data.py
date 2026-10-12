@@ -17,6 +17,7 @@ args = parser.parse_args()
 SOURCE = args.source_dir.resolve()
 OUTPUT = args.output_dir.resolve()
 EXCHANGES = "('NMS','NYQ','NCM','NGM','ASE')"
+MOBILE_SHARDS = 256
 NON_COMMON = (
     "symbol NOT LIKE '%-P%' "
     "AND name NOT ILIKE '% Preferred Stock%' "
@@ -101,7 +102,8 @@ if price_sources:
 (OUTPUT / "manifest.json").write_text(
     json.dumps({
         "schema": 2,
-        "bundle_version": 2,
+        "bundle_version": 3,
+        "mobile_shards": MOBILE_SHARDS,
         "generated_at": generated,
         "universe_rows": symbols,
         "snapshot_rows": period_rows,
@@ -145,7 +147,6 @@ columns = [
     "price_to_earnings_ratio", "free_cash_flow", "fcf_conversion", "market_cap",
 ]
 screens = {}
-featured = set()
 quick_screens = json.loads((ROOT / "ui" / "src" / "quick-screens.json").read_text(encoding="utf-8"))
 for screen in quick_screens:
     query = screen["query"]
@@ -156,7 +157,6 @@ for screen in quick_screens:
         f"WHERE {query} ORDER BY composite_rank DESC NULLS LAST"
     )
     screens[query] = screen_rows
-    featured.update(row["symbol"] for row in screen_rows[:25])
     print(f"{screen['label']}: {len(screen_rows)} candidates")
 
 (OUTPUT / "screens.json").write_text(json.dumps(screens, ensure_ascii=False, allow_nan=False), encoding="utf-8")
@@ -169,13 +169,45 @@ schema = db.execute(f"DESCRIBE SELECT * FROM read_parquet('{snapshot}')").fetcha
     json.dumps([{"name": row[0], "type": "string" if "VARCHAR" in row[1] else "number"} for row in schema]),
     encoding="utf-8",
 )
+def shard_number(symbol):
+    value = 0
+    for char in symbol:
+        value = (value * 31 + ord(char)) & 0xFFFFFFFF
+    return value % MOBILE_SHARDS
+
+
+def write_shards(prefix, buckets):
+    for number, bucket in enumerate(buckets):
+        (OUTPUT / f"{prefix}-{number:03d}.json").write_text(
+            json.dumps(bucket, ensure_ascii=False, allow_nan=False, default=str, separators=(",", ":")),
+            encoding="utf-8",
+        )
+
+
 profiles = {row["symbol"]: row for row in records(f"SELECT * FROM read_parquet('{universe}')")}
-featured_companies = {}
-for symbol in sorted(featured):
-    escaped = symbol.replace("'", "''")
-    periods = records(f"SELECT * FROM read_parquet('{snapshot}') WHERE symbol = '{escaped}' ORDER BY period DESC")
-    featured_companies[symbol] = {"profile": profiles[symbol], "periods": periods}
-(OUTPUT / "featured.json").write_text(
-    json.dumps(featured_companies, ensure_ascii=False, allow_nan=False, default=str), encoding="utf-8"
-)
+company_buckets = [{} for _ in range(MOBILE_SHARDS)]
+cursor = db.execute(f"SELECT * FROM read_parquet('{snapshot}') ORDER BY symbol, period DESC")
+names = [column[0] for column in cursor.description]
+while rows := cursor.fetchmany(1000):
+    for row in rows:
+        period = clean(dict(zip(names, row)))
+        symbol = period["symbol"]
+        company = company_buckets[shard_number(symbol)].setdefault(
+            symbol, {"profile": profiles[symbol], "periods": []}
+        )
+        company["periods"].append(period)
+write_shards("companies", company_buckets)
+
+price_buckets = [{} for _ in range(MOBILE_SHARDS)]
+if price_manifest:
+    cursor = db.execute(
+        f"SELECT symbol, date, close, source FROM read_parquet('{price_path.as_posix()}') "
+        "ORDER BY symbol, date"
+    )
+    while rows := cursor.fetchmany(10000):
+        for symbol, date, close, source in rows:
+            price_buckets[shard_number(symbol)].setdefault(symbol, []).append(
+                [str(date)[:10], clean(close), source]
+            )
+write_shards("prices", price_buckets)
 print(f"US-listed snapshot: {symbols} companies, {period_rows} periods, {(OUTPUT / 'snapshot.parquet').stat().st_size / 1e6:.1f} MB")
