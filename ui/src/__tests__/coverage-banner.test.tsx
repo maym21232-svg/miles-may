@@ -44,6 +44,15 @@ describe("CoverageBanner", () => {
     expect(await screen.findByText(/多数个股收盘截至 2026-09-11/)).toHaveTextContent("个别最新 2026-10-12");
   });
 
+  it("warns when most prices are older than two weeks", async () => {
+    manifestMock.mockResolvedValue({
+      ...updated,
+      prices: { ...updated.prices, symbols: 6353, typical_date: "2020-09-11", typical_symbols: 6227 },
+    });
+    render(<CoverageBanner />);
+    expect(await screen.findByText(/多数价格已超过 14 天/)).toHaveTextContent("勿当作当前行情");
+  });
+
   it("offers reload when prices advance without a new financial snapshot", async () => {
     manifestMock.mockResolvedValueOnce(first).mockResolvedValue({
       ...first, prices: { ...updated.prices, max_date: "2026-10-12" },

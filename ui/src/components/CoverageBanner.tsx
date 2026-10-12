@@ -57,6 +57,11 @@ export function CoverageBanner() {
     timeZone: "Asia/Shanghai", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit",
   });
   const stale = Date.now() - data.generated_at * 1000 > 4 * 24 * 60 * 60 * 1000;
+  const typicalPriceAge = data.prices?.typical_date
+    ? Date.now() - Date.parse(`${data.prices.typical_date}T00:00:00Z`)
+    : 0;
+  const stalePrices = typicalPriceAge > 14 * 24 * 60 * 60 * 1000 &&
+    (data.prices?.typical_symbols ?? 0) > (data.prices?.symbols ?? 0) / 2;
   return (
     <div className="coverage-banner" role="note">
       快照生成 {refreshed} · 覆盖 {data.snapshot_symbols.toLocaleString("zh-CN")} 家美股上市公司
@@ -64,6 +69,7 @@ export function CoverageBanner() {
         ? <> · {data.prices.typical_symbols && data.prices.typical_symbols > data.prices.symbols / 2 ? "多数个股" : "个股常见"}收盘截至 {data.prices.typical_date} · 个别最新 {data.prices.max_date}</>
         : data.prices?.max_date && <> · 最新收盘 {data.prices.max_date}</>}
       {stale && <> · 数据超过 4 天未更新，请核对更新任务</>}
+      {stalePrices && <> · 多数价格已超过 14 天，勿当作当前行情</>}
       {newer && <button className="data-refresh" onClick={() => window.location.reload()}>有新数据，刷新页面</button>}
     </div>
   );

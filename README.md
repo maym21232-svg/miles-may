@@ -2,6 +2,8 @@
 
 面向 iPhone 的中文美股研究网页，可筛选公司、查看财务快照并记录自选与背调笔记。基于 [crible](https://github.com/maxgfr/crible) 的 MIT 开源代码二次开发，保留原项目许可证。
 
+在线使用：[美股研究](https://maym21232-svg.github.io/miles-may/)。
+
 ## 数据边界
 
 GitHub Pages 版本使用 crible 公开快照，并在 GitHub Actions 中生成美国交易所上市公司的静态数据。它不是实时行情或投资建议。页面标明快照和价格日期；SEC 面板在静态版只提供官方申报链接，不冒充已完成实时核验。自选和笔记仅保存在当前浏览器，不跨设备同步。
