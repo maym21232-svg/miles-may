@@ -56,7 +56,7 @@ body {
 
 .querybar input {
   width: 100%;
-  font-family: var(--font-mono);
+  font-family: var(--font-code);
   font-size: var(--scale-body);
   padding: var(--space-2) var(--space-3);
   background: var(--color-bg-raised);
@@ -1833,4 +1833,53 @@ table.results .symlink { font-weight: 700; }
   .views a, .searchbox input, .quick-screens button, .pager button,
   .mobile-result, .mobile-result::before, table.results tr td,
   .coverage-details summary::after { transition: none; }
+}
+
+/* Softer reading rhythm, especially in the dense mobile company sheet. */
+body { line-height: 1.55; }
+.app-brand { font-size: 20px; font-weight: 650; }
+.views a { font-size: 14px; }
+.searchbox input { font-size: 16px; }
+.coverage-banner, .coverage-details p { font-size: 13px; }
+.screen-heading h1, .watchlist-heading h1 { font-size: 20px; }
+.quick-screens button { font-size: 14px; }
+.advanced-toggle, .toolbar > .meta { font-size: 13px; }
+table.results { font-size: 14px; }
+table.results th { font-size: 13px; }
+table.results .cell-name, table.results .symlink { font-size: 14px; }
+.drawer h2 { font-size: 24px; font-weight: 650; }
+.company-subline, .research-brief-head p, .research-source { font-size: 13px; }
+.drawer h3, .research-brief-head h3, .research-horizon h3, .official-disclosure-head h3 { font-size: 17px; }
+.research-metrics dt, .official-facts dt, .official-facts small { font-size: 13px; }
+.research-metrics dd { font-size: 19px; font-weight: 600; }
+.horizon-line-head, .horizon-signal { font-size: 14px; }
+.horizon-line p, .horizon-note, .horizon-line ul { font-size: 13px; }
+.official-disclosure-head span, .official-disclosure-name, .official-disclosure-note,
+.official-disclosure-lag, .research-currency-warning { font-size: 12px; }
+.official-facts dd, .official-filings, .research-notes summary,
+.company-background summary, .full-analysis summary { font-size: 14px; }
+.research-notes label, .company-background dt, .company-background dd,
+.research-notes p { font-size: 13px; }
+.research-notes textarea { font: 15px/1.6 var(--font-sans); }
+.drawer table { font-size: 13px; }
+.drawer td, .drawer th { padding-top: 7px; padding-bottom: 7px; }
+
+@media (max-width: 900px) {
+  .app-brand { font-size: 18px; }
+  .views a { font-size: 13px; }
+  .quick-screens button { font-size: 14px; }
+  .mobile-result-top strong { font-size: 17px; font-weight: 650; }
+  .mobile-result-top small { font-size: 14px; }
+  .mobile-result-top em, .mobile-result-metrics span { font-size: 12px; }
+  .mobile-result-metrics b { font-size: 14px; font-weight: 600; }
+  .mobile-score { font-size: 21px; font-weight: 650; }
+  .mobile-score small { font-size: 11px; }
+  .toolbar > .meta, .coverage-banner { font-size: 12px; }
+  .drawer h2 { font-size: 23px; }
+  .research-metrics dd { font-size: 18px; }
+}
+
+@media (max-width: 360px) {
+  .app-brand { font-size: 17px; }
+  .views a { font-size: 12px; }
 }
