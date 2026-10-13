@@ -80,14 +80,13 @@ export function HorizonBoard({ board, onSelect, onAdvanced, paper, paperError, o
 
   return (
     <main className="horizon-board">
+      <PaperDesk report={paper ?? null} error={paperError} onSelect={onSelect} onRetry={onPaperRetry} />
+      <details className="board-research">
+        <summary><h1>发现公司</h1><span>长线、短线与行业研究</span></summary>
+        <div className="board-research-content">
       <div className="board-heading">
-        <div>
-          <h1>发现公司</h1>
-          <p>按研究周期与行业浏览</p>
-        </div>
         <button type="button" className="board-advanced" onClick={onAdvanced}>高级筛选</button>
       </div>
-      <PaperDesk report={paper ?? null} error={paperError} onSelect={onSelect} onRetry={onPaperRetry} />
       <div className="horizon-switch" role="group" aria-label="研究周期">
         <button type="button" aria-pressed={horizon === "long"} onClick={() => chooseHorizon("long")}>偏长线</button>
         <button type="button" aria-pressed={horizon === "short"} onClick={() => chooseHorizon("short")}>偏短线</button>
@@ -154,6 +153,8 @@ export function HorizonBoard({ board, onSelect, onAdvanced, paper, paperError, o
           </div>
         </>
       )}
+        </div>
+      </details>
     </main>
   );
 }

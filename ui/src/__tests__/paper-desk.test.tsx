@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PaperDesk, expectedCloseDate, type PaperReport } from "../components/PaperDesk";
 
@@ -16,11 +16,17 @@ const report: PaperReport = {
 afterEach(() => vi.useRealTimers());
 
 describe("paper desk", () => {
-  it("shows pending simulated actions and actual holdings separately", () => {
+  it("shows separate buy and sell lanes above collapsed research details", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-10-13T12:00:00Z"));
     render(<PaperDesk report={report} onSelect={vi.fn()} />);
-    expect(screen.getByText("模拟卖出")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "模拟买入决定" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "模拟卖出决定" })).toHaveTextContent("AAPL");
+    expect(screen.queryByRole("button", { name: "下一条模拟卖出决定" })).not.toBeInTheDocument();
+    const details = screen.getByText("研究详情与虚拟仓").closest("details")!;
+    expect(details.open).toBe(false);
+    fireEvent.click(screen.getByText("研究详情与虚拟仓"));
+    expect(details.open).toBe(true);
     expect(screen.getByText("50 股")).toBeInTheDocument();
     expect(screen.getByText(/模拟资产/)).toBeInTheDocument();
     expect(screen.getByText("0.10%")).toBeInTheDocument();
@@ -32,12 +38,30 @@ describe("paper desk", () => {
     vi.setSystemTime(new Date("2026-10-14T12:00:00Z"));
     render(<PaperDesk report={report} onSelect={vi.fn()} />);
     expect(screen.getByText("已暂停")).toBeInTheDocument();
-    expect(screen.queryByText("模拟卖出")).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "模拟卖出决定" })).not.toHaveTextContent("AAPL");
     expect(screen.getByText("50 股")).toBeInTheDocument();
-    expect(screen.getByText("模拟资产暂不可估值")).toBeInTheDocument();
+    expect(screen.getByText(/模拟起始资金/)).toHaveTextContent("模拟资产暂不可估值");
   });
 
   it("uses Friday as the previous weekday on Monday", () => {
     expect(expectedCloseDate(new Date("2026-10-12T12:00:00Z"))).toBe("2026-10-09");
+  });
+
+  it("enables a moving strip only when at least four orders exist", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-13T12:00:00Z"));
+    const orders = ["AAA", "BBB", "CCC", "DDD"].map((symbol) => ({
+      side: "buy" as const, symbol, name: symbol, sector: "Technology",
+      reason: "符合模拟规则", reference_close: 100, decision_date: "2026-10-12",
+    }));
+    render(<PaperDesk report={{ ...report, pending: orders }} onSelect={vi.fn()} />);
+    const lane = screen.getByRole("region", { name: "模拟买入决定" });
+    const list = within(lane).getByRole("list");
+    Object.defineProperty(list, "scrollWidth", { value: 1200 });
+    Object.defineProperty(list, "clientWidth", { value: 500 });
+    Object.defineProperty(list, "scrollTo", { value: vi.fn() });
+    vi.spyOn(list.firstElementChild!, "getBoundingClientRect").mockReturnValue({ width: 280 } as DOMRect);
+    fireEvent.click(screen.getByRole("button", { name: "下一条模拟买入决定" }));
+    expect(list.scrollTo).toHaveBeenCalledWith({ left: 292, behavior: "smooth" });
   });
 });
