@@ -31,8 +31,11 @@ NON_COMMON = (
 OUTPUT.mkdir(parents=True, exist_ok=True)
 db = duckdb.connect()
 source_snapshot = (SOURCE / "snapshot.parquet").as_posix()
+# The upstream snapshot labels Baxter as Communication Services; its SEC filing
+# describes a medical technology and healthcare products business.
 db.execute(
-    f"COPY (SELECT * FROM read_parquet('{source_snapshot}') "
+    f"COPY (SELECT * REPLACE (CASE WHEN symbol = 'BAX' THEN 'Health Care' "
+    f"ELSE sector END AS sector) FROM read_parquet('{source_snapshot}') "
     f"WHERE exchange IN {EXCHANGES} AND {NON_COMMON}) "
     f"TO '{(OUTPUT / 'snapshot.parquet').as_posix()}' "
     "(FORMAT PARQUET, COMPRESSION ZSTD)"
