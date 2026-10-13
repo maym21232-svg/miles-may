@@ -102,7 +102,7 @@ if price_sources:
 (OUTPUT / "manifest.json").write_text(
     json.dumps({
         "schema": 2,
-        "bundle_version": 3,
+        "bundle_version": 4,
         "mobile_shards": MOBILE_SHARDS,
         "generated_at": generated,
         "universe_rows": symbols,
@@ -160,6 +160,53 @@ for screen in quick_screens:
     print(f"{screen['label']}: {len(screen_rows)} candidates")
 
 (OUTPUT / "screens.json").write_text(json.dumps(screens, ensure_ascii=False, allow_nan=False), encoding="utf-8")
+latest = (
+    f"(SELECT * FROM read_parquet('{snapshot}') "
+    "QUALIFY row_number() OVER (PARTITION BY symbol ORDER BY period DESC) = 1)"
+)
+long_candidates = records(
+    "SELECT symbol, name, sector, period, piotroski_f, return_on_equity, "
+    "free_cash_flow, debt_to_equity_ratio FROM " + latest + " WHERE "
+    f"exchange IN {EXCHANGES} AND market_cap >= 1000000000 "
+    "AND piotroski_f >= 6 AND return_on_equity BETWEEN 0.1 AND 10 AND free_cash_flow > 0 "
+    "AND (altman_z IS NULL OR altman_z >= 1.81) "
+    "AND try_cast(CASE WHEN length(period) = 4 THEN period || '-12-31' "
+    "ELSE period END AS DATE) BETWEEN CURRENT_DATE - INTERVAL 455 DAY AND CURRENT_DATE "
+    "ORDER BY sector NULLS LAST, name, symbol"
+)
+short_candidates = []
+if price_manifest:
+    short_candidates = records(
+        "WITH valid AS ("
+        f"SELECT symbol, CAST(date AS DATE) AS date, close, "
+        "row_number() OVER (PARTITION BY symbol ORDER BY date DESC) AS rn "
+        f"FROM read_parquet('{price_path.as_posix()}') WHERE close > 0 AND isfinite(close)), "
+        "windowed AS (SELECT symbol, count(*) AS bars, "
+        "max(CASE WHEN rn = 1 THEN date END) AS price_date, "
+        "max(CASE WHEN rn = 61 THEN date END) AS oldest_date, "
+        "max(CASE WHEN rn = 1 THEN close END) AS close, "
+        "max(CASE WHEN rn = 21 THEN close END) AS close_20_ago, "
+        "max(CASE WHEN rn = 61 THEN close END) AS close_60_ago, "
+        "avg(CASE WHEN rn <= 20 THEN close END) AS average_20 "
+        "FROM valid WHERE rn <= 61 GROUP BY symbol) "
+        "SELECT s.symbol, s.name, s.sector, w.price_date, "
+        "round(w.close / w.close_20_ago - 1, 6) AS return_20d, "
+        "round(w.close / w.close_60_ago - 1, 6) AS return_60d "
+        f"FROM windowed w JOIN {latest} s USING (symbol) "
+        f"WHERE s.exchange IN {EXCHANGES} AND s.market_cap >= 1000000000 "
+        "AND w.bars >= 61 AND w.price_date BETWEEN CURRENT_DATE - INTERVAL 7 DAY AND CURRENT_DATE "
+        "AND w.oldest_date >= CURRENT_DATE - INTERVAL 150 DAY "
+        "AND w.close > w.close_20_ago AND w.close > w.close_60_ago "
+        "AND w.close > w.average_20 "
+        "ORDER BY s.sector NULLS LAST, s.name, s.symbol"
+    )
+(OUTPUT / "horizon-board.json").write_text(
+    json.dumps({"generated_at": generated,
+                "prices_typical_date": price_manifest.get("typical_date") if price_manifest else None,
+                "long": long_candidates, "short": short_candidates},
+               ensure_ascii=False, allow_nan=False, default=str), encoding="utf-8",
+)
+print(f"Board: {len(long_candidates)} long-term, {len(short_candidates)} short-term candidates")
 (OUTPUT / "overview.json").write_text(
     json.dumps(records(f"SELECT symbol, name, country, sector FROM read_parquet('{universe}') ORDER BY symbol"), ensure_ascii=False),
     encoding="utf-8",

@@ -79,7 +79,7 @@ export function longHorizon(latest: Record<string, unknown>, now = new Date()): 
   const cash = finite(latest.free_cash_flow);
   if (cash !== null) checks.push([`自由现金流${cash > 0 ? "为正" : "未为正"}`, cash > 0]);
   const roe = finite(latest.return_on_equity);
-  if (roe !== null) checks.push([`净资产收益率 ${(roe * 100).toFixed(1)}%`, roe >= 0.1]);
+  if (roe !== null && Math.abs(roe) <= 10) checks.push([`净资产收益率 ${(roe * 100).toFixed(1)}%`, roe >= 0.1]);
   const debt = finite(latest.debt_to_equity_ratio);
   if (debt !== null) checks.push([`负债权益比 ${debt.toFixed(2)}`, debt >= 0 && debt < 1.5]);
   if (checks.length < 3) {

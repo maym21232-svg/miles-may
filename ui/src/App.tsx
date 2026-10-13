@@ -14,6 +14,7 @@ import {
   STATIC_MODE,
   exportCsv,
   fields,
+  manifest,
   screen,
   status,
   type DslErrorDetail,
@@ -24,6 +25,7 @@ import {
 import { ColumnPicker } from "./components/ColumnPicker";
 import { CompanyDrawer } from "./components/CompanyDrawer";
 import { CoverageBanner } from "./components/CoverageBanner";
+import { HorizonBoard, type HorizonBoardData } from "./components/HorizonBoard";
 import { PresetsMenu } from "./components/PresetsMenu";
 import { QueryBuilder } from "./components/QueryBuilder";
 import { QueryBar } from "./components/QueryBar";
@@ -111,7 +113,48 @@ export default function App() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [watchlist, setWatchlist] = useState<WatchItem[]>(loadWatchlist);
   const [watchlistError, setWatchlistError] = useState("");
+  const [board, setBoard] = useState<HorizonBoardData | null>(null);
+  const [boardError, setBoardError] = useState(false);
   const queryInputRef = useRef<HTMLInputElement>(null);
+  const routedScreenRef = useRef<string | null>(null);
+
+  const loadBoard = () => {
+    setBoardError(false);
+    fetch(`${import.meta.env.BASE_URL}data/horizon-board.json`, { cache: "no-store" })
+      .then(async (response) => {
+        if (response.status === 404) {
+          const [legacy, site] = await Promise.all([
+            screen(DEFAULT_QUERY, DEFAULT_SORT, 1, 10_000), manifest(),
+          ]);
+          const now = Date.now();
+          return {
+            generated_at: site?.generated_at ?? 0,
+            prices_typical_date: site?.prices?.typical_date ?? null,
+            long: legacy.rows.filter((row) => {
+              const raw = String(row.period ?? "");
+              const date = Date.parse(`${raw.length === 4 ? `${raw}-12-31` : raw}T00:00:00Z`);
+              const z = row.altman_z;
+              const roe = row.return_on_equity;
+              return Number.isFinite(date) && date <= now && now - date <= 455 * 86_400_000 &&
+                typeof roe === "number" && roe <= 10 &&
+                (z == null || (typeof z === "number" && z >= 1.81));
+            }).map((row) => ({
+              symbol: String(row.symbol),
+              name: typeof row.name === "string" ? row.name : null,
+              sector: typeof row.sector === "string" ? row.sector : null,
+              period: String(row.period),
+              piotroski_f: typeof row.piotroski_f === "number" ? row.piotroski_f : null,
+              return_on_equity: typeof row.return_on_equity === "number" ? row.return_on_equity : null,
+            })),
+            short: [],
+          } satisfies HorizonBoardData;
+        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json() as Promise<HorizonBoardData>;
+      })
+      .then(setBoard)
+      .catch(() => setBoardError(true));
+  };
 
   const changeWatchlist = (next: WatchItem[]) => {
     if (!saveWatchlist(next)) {
@@ -207,7 +250,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    runScreen(route.q ?? DEFAULT_QUERY, route.sort ?? DEFAULT_SORT, 1);
     fields()
       .then((fs) => setFieldInfos(fs.filter((f) => !isHiddenField(f.name))))
       .catch(() => {});
@@ -222,16 +264,30 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (STATIC_MODE && route.view === "screener" && route.q === null && !board && !boardError) loadBoard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.view, route.q]);
+
   // A hand-edited or history-navigated URL re-runs its screen (the guard on
   // ranQuery breaks the loop: runScreen writes the same q back via replace).
   useEffect(() => {
-    if (route.view !== "screener" || route.q === null || running) return;
-    if (ranQuery !== null && route.q !== ranQuery) {
-      setQuery(route.q);
-      runScreen(route.q, route.sort, 1);
+    if (route.view !== "screener" || running) return;
+    const next = STATIC_MODE && route.q === null ? null : route.q ?? DEFAULT_QUERY;
+    if (next === null) {
+      routedScreenRef.current = null;
+      return;
+    }
+    const targetSort = route.sort ?? (ranQuery === next ? sort : DEFAULT_SORT);
+    const key = `${next}\u0000${targetSort ?? ""}`;
+    if (routedScreenRef.current === key) return;
+    routedScreenRef.current = key;
+    if (ranQuery !== next || sort !== targetSort) {
+      setQuery(next);
+      runScreen(next, targetSort, 1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route.q]);
+  }, [route.q, route.sort, route.view, running]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -274,6 +330,7 @@ export default function App() {
   const totalPages = result ? Math.max(1, Math.ceil(result.total / PAGE_SIZE)) : 1;
   const firstRow = result ? (page - 1) * PAGE_SIZE + 1 : 0;
   const lastRow = result ? Math.min(page * PAGE_SIZE, result.total) : 0;
+  const showBoard = STATIC_MODE && route.view === "screener" && route.q === null;
 
   return (
     <div className="app">
@@ -301,10 +358,25 @@ export default function App() {
 
       {STATIC_MODE && <CoverageBanner />}
 
-      {route.view === "screener" && (
+      {showBoard && (board ? (
+        <HorizonBoard board={board}
+          onSelect={(symbol) => navigate({ view: "screener", company: symbol, q: null, sort: null })}
+          onAdvanced={() => {
+            setAdvancedOpen(true);
+            navigate({ view: "screener", company: null, q: DEFAULT_QUERY, sort: DEFAULT_SORT });
+          }} />
+      ) : (
+        <main className="horizon-board board-empty-state">
+          {boardError ? <><p role="alert">板块数据暂时无法加载。</p><button type="button" onClick={loadBoard}>重试</button></>
+            : <p aria-busy="true">正在加载板块…</p>}
+        </main>
+      ))}
+
+      {route.view === "screener" && !showBoard && (
         <main className="screener-workspace">
           <div className="screen-heading">
             <h1>股票筛选</h1>
+            {STATIC_MODE && <a className="board-return" href="#/">按板块浏览</a>}
             {!STATIC_MODE && <span className="meta">{statusLine}</span>}
           </div>
           <div className="screen-filter-row">

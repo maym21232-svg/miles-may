@@ -124,6 +124,10 @@ describe("engine sort + pagination", () => {
     fireEvent.click(rtl.getByRole("button", { name: /^财务质量/ }));
     await waitFor(() => expect(screenCalls.length).toBe(3));
     expect(screenCalls[2].sort).toBe("piotroski_f"); // second click = ascending
+
+    fireEvent.click(rtl.getByRole("button", { name: /^财务质量/ }));
+    await waitFor(() => expect(screenCalls.length).toBe(4));
+    expect(screenCalls[3].sort).toBeNull(); // third click = unsorted
   });
 
   it("pages through large result sets in the engine", async () => {

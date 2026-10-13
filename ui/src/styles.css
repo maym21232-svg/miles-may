@@ -1883,3 +1883,56 @@ table.results .cell-name, table.results .symlink { font-size: 14px; }
   .app-brand { font-size: 17px; }
   .views a { font-size: 12px; }
 }
+
+.horizon-board { flex: 1; min-height: 0; overflow-y: auto; width: min(100%, 1200px); margin: 0 auto; padding: 24px 20px 64px; }
+.board-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.board-heading h1 { margin: 0; font-size: 24px; font-weight: 700; }
+.board-heading p { margin: 2px 0 0; color: var(--color-muted); font-size: 14px; }
+.board-advanced, .board-return { color: var(--color-primary); font-size: 14px; white-space: nowrap; }
+.board-advanced { padding: 8px 10px; background: transparent; border: 0; }
+.board-advanced:hover { background: color-mix(in srgb, var(--color-primary) 9%, transparent); }
+.board-return { margin-left: auto; }
+.horizon-switch { display: inline-flex; width: min(100%, 330px); margin-top: 24px; padding: 4px; gap: 4px; border: 1px solid color-mix(in srgb, var(--color-muted) 22%, transparent); border-radius: 8px; background: var(--color-bg-raised); }
+.horizon-switch button { flex: 1; min-height: 42px; border: 0; border-radius: 6px; background: transparent; color: var(--color-muted); font-size: 16px; font-weight: 600; }
+.horizon-switch button[aria-pressed="true"] { background: var(--color-primary); color: var(--color-on-primary); }
+.board-context { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-top: 20px; }
+.board-context p { margin: 0; font-size: 15px; }
+.board-context span { color: var(--color-muted); font-size: 14px; white-space: nowrap; }
+.board-caveat, .board-freshness { max-width: 760px; margin: 5px 0 0; color: var(--color-muted); font-size: 13px; }
+.board-freshness { color: var(--color-warn); }
+.board-sector-filter { display: flex; align-items: center; gap: 10px; margin: 22px 0 4px; }
+.board-sector-filter label { color: var(--color-muted); font-size: 14px; }
+.board-sector-filter select { min-width: 190px; max-width: 100%; min-height: 38px; padding: 6px 12px; border: 1px solid color-mix(in srgb, var(--color-muted) 32%, transparent); border-radius: 6px; background: var(--color-bg-raised); color: var(--color-fg); font: 14px var(--font-sans); }
+.board-sectors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; }
+.board-sector { min-width: 0; padding-top: 18px; }
+.board-sector-heading { display: flex; align-items: baseline; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid color-mix(in srgb, var(--color-muted) 30%, transparent); }
+.board-sector-heading h2 { margin: 0; font-size: 18px; font-weight: 650; }
+.board-sector-heading span { color: var(--color-muted); font-size: 13px; }
+.board-company-list { display: flex; flex-direction: column; }
+.board-company { display: flex; align-items: center; width: 100%; min-height: 66px; gap: 12px; padding: 10px 3px; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--color-muted) 14%, transparent); border-radius: 0; background: transparent; color: var(--color-fg); text-align: left; }
+.board-company:hover, .board-company:focus-visible { background: color-mix(in srgb, var(--color-primary) 7%, transparent); }
+.board-company-identity { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.board-company-identity strong { font-size: 16px; font-weight: 700; }
+.board-company-identity > span { overflow: hidden; color: var(--color-muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.board-company-detail { display: flex; flex-direction: column; min-width: 116px; align-items: flex-end; font-size: 12px; }
+.board-company-detail small { color: var(--color-muted); font-size: 11px; }
+.board-company-arrow { color: var(--color-muted); font-size: 24px; line-height: 1; }
+.board-more { width: 100%; min-height: 38px; padding: 7px 0; border: 0; background: transparent; color: var(--color-primary); text-align: left; font-size: 13px; }
+.board-empty, .board-empty-state { padding-top: 48px; }
+.board-empty strong { font-size: 17px; }
+.board-empty p, .board-empty-state p { color: var(--color-muted); font-size: 14px; }
+
+@media (max-width: 760px) {
+  .horizon-board { padding: 18px 16px 48px; }
+  .board-heading h1 { font-size: 22px; }
+  .horizon-switch { width: 100%; margin-top: 20px; }
+  .board-context { flex-wrap: wrap; gap: 4px 14px; }
+  .board-context p { width: 100%; font-size: 14px; }
+  .board-sectors { display: block; }
+  .board-sector { padding-top: 22px; }
+  .board-company { min-height: 72px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .horizon-switch button, .board-company { transition: none; }
+}

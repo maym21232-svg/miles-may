@@ -42,5 +42,6 @@ describe("research horizon", () => {
     expect(longHorizon({ ...latest, altman_z: 1.2 }, NOW).signal).toBe("mixed");
     expect(longHorizon({ ...latest, period: "2024-12-31" }, NOW).signal).toBe("insufficient");
     expect(longHorizon({ period: "2025-12-31", piotroski_f: 7 }, NOW).signal).toBe("insufficient");
+    expect(longHorizon({ ...latest, return_on_equity: 153, debt_to_equity_ratio: null }, NOW).signal).toBe("insufficient");
   });
 });
