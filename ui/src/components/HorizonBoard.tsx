@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { researchValue } from "../research-format";
 import { sectorLabel } from "../research-labels";
+import { PaperDesk, paperPaused, type PaperReport } from "./PaperDesk";
 
 export interface HorizonCandidate {
   symbol: string;
@@ -52,15 +53,19 @@ function metric(value: number | null | undefined): string {
   return value == null || !Number.isFinite(value) ? "—" : `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)}%`;
 }
 
-export function HorizonBoard({ board, onSelect, onAdvanced }: {
+export function HorizonBoard({ board, onSelect, onAdvanced, paper, paperError, onPaperRetry }: {
   board: HorizonBoardData;
   onSelect: (symbol: string) => void;
   onAdvanced: () => void;
+  paper?: PaperReport | null;
+  paperError?: boolean;
+  onPaperRetry?: () => void;
 }) {
   const [horizon, setHorizon] = useState<Horizon>("long");
   const [sector, setSector] = useState<string | null>(null);
   const [visible, setVisible] = useState(25);
-  const rows = horizon === "long" ? board.long : board.short;
+  const shortPaused = !paper || paperPaused(paper) || board.prices_typical_date !== paper.data_date;
+  const rows = horizon === "long" ? board.long : shortPaused ? [] : board.short;
   const sectors = useMemo(() => bySector(rows), [rows]);
   const shown = sector ? sectors.filter(([name]) => name === sector) : sectors;
   const chooseHorizon = (next: Horizon) => {
@@ -82,6 +87,7 @@ export function HorizonBoard({ board, onSelect, onAdvanced }: {
         </div>
         <button type="button" className="board-advanced" onClick={onAdvanced}>高级筛选</button>
       </div>
+      <PaperDesk report={paper ?? null} error={paperError} onSelect={onSelect} onRetry={onPaperRetry} />
       <div className="horizon-switch" role="group" aria-label="研究周期">
         <button type="button" aria-pressed={horizon === "long"} onClick={() => chooseHorizon("long")}>偏长线</button>
         <button type="button" aria-pressed={horizon === "short"} onClick={() => chooseHorizon("short")}>偏短线</button>
@@ -93,14 +99,15 @@ export function HorizonBoard({ board, onSelect, onAdvanced }: {
         <span>{rows.length} 家候选</span>
       </div>
       <p className="board-caveat">条件筛选不是上涨概率或投资建议。打开公司查看依据、数据日期与风险。</p>
-      {horizon === "short" && board.prices_typical_date && (
+      {horizon === "short" && shortPaused && <p className="board-freshness">行情过期，短线候选名单已暂停展示。</p>}
+      {horizon === "short" && !shortPaused && board.prices_typical_date && (
         <p className="board-freshness">多数股票的价格截至 {board.prices_typical_date}；下方仅展示最近 7 天内有有效收盘价、且历史足够的公司。</p>
       )}
       {rows.length === 0 ? (
         <div className="board-empty">
-          <strong>{horizon === "short" ? "暂无可判断的短线候选" : "暂无符合条件的公司"}</strong>
+          <strong>{horizon === "short" ? shortPaused ? "短线名单暂时停用" : "暂无可判断的短线候选" : "暂无符合条件的公司"}</strong>
           <p>{horizon === "short"
-            ? "行情可能尚未更新，或目前没有公司同时满足 20/60 日趋势条件。不会用过期价格填充名单。"
+            ? shortPaused ? "价格日期未通过最新交易日校验，等待自动更新。" : "行情可能尚未更新，或目前没有公司同时满足 20/60 日趋势条件。不会用过期价格填充名单。"
             : "可以使用高级筛选放宽条件。"}</p>
         </div>
       ) : (

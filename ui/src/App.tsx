@@ -26,6 +26,7 @@ import { ColumnPicker } from "./components/ColumnPicker";
 import { CompanyDrawer } from "./components/CompanyDrawer";
 import { CoverageBanner } from "./components/CoverageBanner";
 import { HorizonBoard, type HorizonBoardData } from "./components/HorizonBoard";
+import type { PaperReport } from "./components/PaperDesk";
 import { PresetsMenu } from "./components/PresetsMenu";
 import { QueryBuilder } from "./components/QueryBuilder";
 import { QueryBar } from "./components/QueryBar";
@@ -115,6 +116,8 @@ export default function App() {
   const [watchlistError, setWatchlistError] = useState("");
   const [board, setBoard] = useState<HorizonBoardData | null>(null);
   const [boardError, setBoardError] = useState(false);
+  const [paper, setPaper] = useState<PaperReport | null>(null);
+  const [paperError, setPaperError] = useState(false);
   const queryInputRef = useRef<HTMLInputElement>(null);
   const routedScreenRef = useRef<string | null>(null);
 
@@ -154,6 +157,25 @@ export default function App() {
       })
       .then(setBoard)
       .catch(() => setBoardError(true));
+  };
+
+  const loadPaper = () => {
+    setPaperError(false);
+    fetch(`${import.meta.env.BASE_URL}data/paper-portfolio.json`, { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json() as Promise<PaperReport>;
+      })
+      .then((result) => {
+        if (result.version !== 1 || !Array.isArray(result.positions) ||
+            !Array.isArray(result.pending) || !Array.isArray(result.decisions) ||
+            !Array.isArray(result.fills)) throw new Error("模拟记录结构无效");
+        setPaper(result);
+      })
+      .catch(() => {
+        setPaper(null);
+        setPaperError(true);
+      });
   };
 
   const changeWatchlist = (next: WatchItem[]) => {
@@ -266,8 +288,25 @@ export default function App() {
 
   useEffect(() => {
     if (STATIC_MODE && route.view === "screener" && route.q === null && !board && !boardError) loadBoard();
+    if (STATIC_MODE && route.view === "screener" && route.q === null && !paper && !paperError) loadPaper();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route.view, route.q]);
+
+  useEffect(() => {
+    if (!STATIC_MODE) return;
+    const refresh = () => {
+      if (document.hidden) return;
+      loadBoard();
+      loadPaper();
+    };
+    const timer = window.setInterval(refresh, 15 * 60_000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // A hand-edited or history-navigated URL re-runs its screen (the guard on
   // ranQuery breaks the loop: runScreen writes the same q back via replace).
@@ -360,6 +399,7 @@ export default function App() {
 
       {showBoard && (board ? (
         <HorizonBoard board={board}
+          paper={paper} paperError={paperError} onPaperRetry={loadPaper}
           onSelect={(symbol) => navigate({ view: "screener", company: symbol, q: null, sort: null })}
           onAdvanced={() => {
             setAdvancedOpen(true);

@@ -4,5 +4,7 @@ ui/tsconfig.tsbuildinfo
 ui/.vitest-cache/
 ui/public/data/
 ui/public/data.refresh.lock
+.python-deps/
+__pycache__/
 .env
 *.log

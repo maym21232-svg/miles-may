@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "starting_cash": 100000.0,
+  "cash": 100000.0,
+  "last_price_date": null,
+  "positions": [],
+  "pending": [],
+  "decisions": [],
+  "fills": []
+}
