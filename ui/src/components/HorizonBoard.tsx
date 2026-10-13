@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { CalendarDays, ChevronRight } from "lucide-react";
 import { researchValue } from "../research-format";
 import { sectorLabel } from "../research-labels";
 import { PaperDesk, paperPaused, type PaperReport } from "./PaperDesk";
@@ -53,13 +54,14 @@ function metric(value: number | null | undefined): string {
   return value == null || !Number.isFinite(value) ? "—" : `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)}%`;
 }
 
-export function HorizonBoard({ board, onSelect, onAdvanced, paper, paperError, onPaperRetry }: {
+export function HorizonBoard({ board, onSelect, onAdvanced, paper, paperError, onPaperRetry, overview }: {
   board: HorizonBoardData;
   onSelect: (symbol: string) => void;
   onAdvanced: () => void;
   paper?: PaperReport | null;
   paperError?: boolean;
   onPaperRetry?: () => void;
+  overview?: ReactNode;
 }) {
   const [horizon, setHorizon] = useState<Horizon>("long");
   const [sector, setSector] = useState<string | null>(null);
@@ -80,13 +82,20 @@ export function HorizonBoard({ board, onSelect, onAdvanced, paper, paperError, o
 
   return (
     <main className="horizon-board">
-      <PaperDesk report={paper ?? null} error={paperError} onSelect={onSelect} onRetry={onPaperRetry} />
+      {overview && <div className="board-overview">
+        <div className="board-overview-coverage">{overview}</div>
+        <div className="board-overview-state">
+          <CalendarDays aria-hidden="true" />
+          <span><small>每日模拟决策</small><strong>{paperError ? "数据不可用" : !paper ? "加载中" : paperPaused(paper) ? "已暂停" : "已评估"}</strong></span>
+        </div>
+      </div>}
+      <PaperDesk report={paper ?? null} error={paperError} onSelect={onSelect} onRetry={onPaperRetry} showHeading={!overview} />
       <div className="board-heading">
         <div>
           <h1>发现公司</h1>
           <p>按研究周期与行业浏览</p>
         </div>
-        <button type="button" className="board-advanced" onClick={onAdvanced}>高级筛选</button>
+        <button type="button" className="board-advanced" onClick={onAdvanced}>高级筛选 <ChevronRight size={16} aria-hidden="true" /></button>
       </div>
       <div className="horizon-switch" role="group" aria-label="研究周期">
         <button type="button" aria-pressed={horizon === "long"} onClick={() => chooseHorizon("long")}>偏长线</button>
@@ -133,13 +142,16 @@ export function HorizonBoard({ board, onSelect, onAdvanced, paper, paperError, o
                   <div className="board-company-list">
                     {members.slice(0, limit).map((row) => (
                       <button className="board-company" type="button" key={row.symbol} onClick={() => onSelect(row.symbol)}>
-                        <span className="board-company-identity"><strong>{row.symbol}</strong><span>{row.name || "公司名称未知"}</span></span>
-                        <span className="board-company-detail">
-                          {horizon === "long"
-                            ? <><span>财务质量 {row.piotroski_f ?? "—"}/9</span><span>ROE {researchValue("return_on_equity", row.return_on_equity)}</span><small>财报 {row.period || "未知"}</small></>
-                            : <><span>近 20 日 {metric(row.return_20d)}</span><span>近 60 日 {metric(row.return_60d)}</span><small>收盘 {row.price_date || "未知"}</small></>}
+                        <span className="board-company-mark" aria-hidden="true">{row.symbol.slice(0, 2)}</span>
+                        <span className="board-company-body">
+                          <span className="board-company-identity"><strong>{row.symbol}</strong><span>{row.name || "公司名称未知"}</span></span>
+                          <span className="board-company-detail">
+                            {horizon === "long"
+                              ? <><span>财务质量 {row.piotroski_f ?? "—"}/9</span><span>ROE {researchValue("return_on_equity", row.return_on_equity)}</span><small>财报 {row.period || "未知"}</small></>
+                              : <><span>近 20 日 {metric(row.return_20d)}</span><span>近 60 日 {metric(row.return_60d)}</span><small>收盘 {row.price_date || "未知"}</small></>}
+                          </span>
                         </span>
-                        <span className="board-company-arrow" aria-hidden="true">›</span>
+                        <ChevronRight className="board-company-arrow" size={21} aria-hidden="true" />
                       </button>
                     ))}
                   </div>

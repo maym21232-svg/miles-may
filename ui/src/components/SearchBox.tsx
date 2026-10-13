@@ -4,6 +4,7 @@
 // identically in api and static mode.
 
 import { useEffect, useRef, useState } from "react";
+import { Search } from "lucide-react";
 import { search, type SearchHit } from "../data";
 
 interface Props {
@@ -49,6 +50,7 @@ export function SearchBox({ onPick }: Props) {
 
   return (
     <div className="searchbox">
+      <Search className="searchbox-icon" size={19} aria-hidden="true" />
       <input
         aria-label="搜索公司或股票代码"
         role="combobox"

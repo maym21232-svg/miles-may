@@ -3,6 +3,7 @@
 // DuckDB-WASM, refreshed nightly from keyless open sources. No upsell.
 
 import { useEffect, useRef, useState } from "react";
+import { Building2 } from "lucide-react";
 import { manifest, type SiteManifest } from "../data";
 
 export function CoverageBanner() {
@@ -67,8 +68,9 @@ export function CoverageBanner() {
       <details className="coverage-details">
         <summary>
           <span className={`coverage-indicator${stale || stalePrices ? " is-stale" : ""}`} aria-hidden="true" />
+          <Building2 className="coverage-building" aria-hidden="true" />
           <strong>数据快照</strong>
-          <span>覆盖 {data.snapshot_symbols.toLocaleString("zh-CN")} 家</span>
+          <span className="coverage-count"><span className="coverage-prefix">覆盖 </span>{data.snapshot_symbols.toLocaleString("zh-CN")} 家</span>
           {(stale || stalePrices) && <span className="coverage-alert">{stalePrices ? "多数行情滞后" : "快照待更新"}</span>}
         </summary>
         <p>快照生成 {refreshed} · 覆盖 {data.snapshot_symbols.toLocaleString("zh-CN")} 家美股上市公司

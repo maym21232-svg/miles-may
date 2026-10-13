@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, Clock3, FileText, TriangleAlert } from "lucide-react";
 
 export interface PaperOrder {
   side: "buy" | "sell";
@@ -82,10 +83,12 @@ function OrderLane({ side, orders, empty, onSelect }: {
   return (
     <section className={`paper-lane paper-lane-${side}`} aria-label={`${title}决定`}>
       <div className="paper-lane-heading">
+        <span className="paper-lane-icon" aria-hidden="true">{side === "buy" ? <ArrowUp /> : <ArrowDown />}</span>
         <h3>{title} <span>{orders.length}</span></h3>
+        {!orders.length && <p className="paper-lane-empty"><Clock3 size={17} aria-hidden="true" />{empty}</p>}
         {carousel && <div className="paper-lane-controls">
-          <button type="button" aria-label={`上一条${title}决定`} title="上一条" onClick={() => move(-1)}>‹</button>
-          <button type="button" aria-label={`下一条${title}决定`} title="下一条" onClick={() => move(1)}>›</button>
+          <button type="button" aria-label={`上一条${title}决定`} title="上一条" onClick={() => move(-1)}><ChevronLeft aria-hidden="true" /></button>
+          <button type="button" aria-label={`下一条${title}决定`} title="下一条" onClick={() => move(1)}><ChevronRight aria-hidden="true" /></button>
         </div>}
       </div>
       {orders.length ? (
@@ -104,16 +107,17 @@ function OrderLane({ side, orders, empty, onSelect }: {
             </li>
           ))}
         </ul>
-      ) : <p className="paper-lane-empty">{empty}</p>}
+      ) : null}
     </section>
   );
 }
 
-export function PaperDesk({ report, error = false, onSelect, onRetry }: {
+export function PaperDesk({ report, error = false, onSelect, onRetry, showHeading = true }: {
   report: PaperReport | null;
   error?: boolean;
   onSelect: (symbol: string) => void;
   onRetry?: () => void;
+  showHeading?: boolean;
 }) {
   const paused = paperPaused(report);
   const staleOnDevice = report?.status === "ready" && report.data_date !== expectedCloseDate();
@@ -131,21 +135,21 @@ export function PaperDesk({ report, error = false, onSelect, onRetry }: {
 
   return (
     <section className="paper-desk" aria-label="每日模拟决策">
-      <div className="paper-heading">
+      {showHeading && <div className="paper-heading">
         <h2>每日模拟决策</h2>
         <span className={`paper-state${paused || error ? " paper-state-paused" : ""}`}>
           {error ? "数据不可用" : !report ? "加载中" : paused ? "已暂停" : "已评估"}
         </span>
-      </div>
+      </div>}
       {report && <p className="paper-asof">行情 {report.data_date || "未知"} · 最近决策 {report.last_decision_date || "尚无"}</p>}
-      {report && paused && <p className="paper-warning" role="status">{warning}</p>}
+      {report && paused && <p className="paper-warning" role="status"><TriangleAlert size={19} aria-hidden="true" /><span>{warning}</span></p>}
       {error && onRetry && <button className="paper-retry-button" type="button" onClick={onRetry}>重试</button>}
       <div className="paper-signals">
         <OrderLane side="buy" orders={pending.filter((order) => order.side === "buy")} empty={empty} onSelect={onSelect} />
         <OrderLane side="sell" orders={pending.filter((order) => order.side === "sell")} empty={empty} onSelect={onSelect} />
       </div>
       {report && <details className="paper-research">
-        <summary>虚拟仓与决策依据</summary>
+        <summary><FileText size={18} aria-hidden="true" /><span>虚拟仓与决策依据</span><ChevronDown className="paper-research-chevron" size={19} aria-hidden="true" /></summary>
         <div className="paper-research-content">
           <p className="paper-equity">模拟起始资金 {money(report.starting_cash)} · {equity === null ? "模拟资产暂不可估值" : <>模拟资产 <strong>{money(equity)}</strong> <span>{`${((equity / report.starting_cash - 1) * 100).toFixed(2)}%`}</span></>}</p>
           <h3>虚拟持仓 <span>{report.positions.length}</span></h3>

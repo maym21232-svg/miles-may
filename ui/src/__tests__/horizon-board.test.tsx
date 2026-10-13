@@ -62,4 +62,14 @@ describe("horizon board", () => {
     expect(screen.getByText("短线名单暂时停用")).toBeInTheDocument();
     expect(screen.queryByText("Gamma")).not.toBeInTheDocument();
   });
+
+  it("keeps the overview above decisions and company discovery", () => {
+    const { container } = render(<HorizonBoard board={board} paper={{ ...paper, status: "paused" }}
+      overview={<span>覆盖公司测试</span>} onSelect={vi.fn()} onAdvanced={vi.fn()} />);
+    expect(container.querySelector(".board-overview-coverage")).toHaveTextContent("覆盖公司测试");
+    expect(container.querySelector(".board-overview-state")).toHaveTextContent("已暂停");
+    expect(screen.getByRole("region", { name: "模拟买入决定" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "发现公司" })).toBeInTheDocument();
+    expect(container.querySelector(".paper-research")?.hasAttribute("open")).toBe(false);
+  });
 });

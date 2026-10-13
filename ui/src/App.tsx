@@ -8,6 +8,7 @@
 // current query (all pages) via /api/screen.csv.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Compass, FileText, Settings2, Star } from "lucide-react";
 import QUICK_SCREENS from "./quick-screens.json";
 import {
   DslApiError,
@@ -377,6 +378,9 @@ export default function App() {
         <a className="wordmark-link" href="#/" aria-label="美股研究">
           <span className="app-brand">美股研究</span>
         </a>
+        <a className="mobile-settings" href="#/status" aria-label="数据与外观设置" title="数据与外观设置">
+          <Settings2 size={21} strokeWidth={2.2} aria-hidden="true" />
+        </a>
         <nav className="views" aria-label="主导航">
           {VIEWS.map((v) => (
             <a
@@ -384,6 +388,9 @@ export default function App() {
               href={v.hash}
               aria-current={route.view === v.view ? "page" : undefined}
             >
+              {v.view === "screener" ? <Compass aria-hidden="true" />
+                : v.view === "watchlist" ? <Star aria-hidden="true" />
+                  : <FileText aria-hidden="true" />}
               {v.label}
             </a>
           ))}
@@ -395,10 +402,11 @@ export default function App() {
         />
       </header>
 
-      {STATIC_MODE && <CoverageBanner />}
+      {STATIC_MODE && !showBoard && <CoverageBanner />}
 
       {showBoard && (board ? (
         <HorizonBoard board={board}
+          overview={<CoverageBanner />}
           paper={paper} paperError={paperError} onPaperRetry={loadPaper}
           onSelect={(symbol) => navigate({ view: "screener", company: symbol, q: null, sort: null })}
           onAdvanced={() => {
