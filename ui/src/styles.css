@@ -1885,13 +1885,9 @@ table.results .cell-name, table.results .symlink { font-size: 14px; }
 }
 
 .horizon-board { flex: 1; min-height: 0; overflow-y: auto; width: min(100%, 1200px); margin: 0 auto; padding: 24px 20px 64px; }
-.board-research summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 12px; cursor: pointer; color: var(--color-fg); }
-.board-research summary::before { content: "▸"; color: var(--color-primary); font-size: 17px; }
-.board-research[open] summary::before { transform: rotate(90deg); }
-.board-research summary h1 { margin: 0; font-size: 19px; }
-.board-research summary span { color: var(--color-muted); font-size: 13px; }
-.board-research-content { padding-top: 10px; }
-.board-heading { display: flex; justify-content: flex-end; }
+.board-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.board-heading h1 { margin: 0; font-size: 24px; font-weight: 700; }
+.board-heading p { margin: 2px 0 0; color: var(--color-muted); font-size: 14px; }
 .board-advanced, .board-return { color: var(--color-primary); font-size: 14px; white-space: nowrap; }
 .board-advanced { padding: 8px 10px; background: transparent; border: 0; }
 .board-advanced:hover { background: color-mix(in srgb, var(--color-primary) 9%, transparent); }
@@ -1980,7 +1976,7 @@ table.results .cell-name, table.results .symlink { font-size: 14px; }
 
 @media (max-width: 760px) {
   .horizon-board { padding: 18px 16px 48px; }
-  .board-research summary h1 { font-size: 18px; }
+  .board-heading h1 { font-size: 22px; }
   .paper-lane { padding: 11px 12px 9px; }
   .paper-lane-heading h3 { font-size: 19px; }
   .paper-order-track li, .paper-order-track.is-carousel li { flex: 0 0 min(280px, 78vw); }

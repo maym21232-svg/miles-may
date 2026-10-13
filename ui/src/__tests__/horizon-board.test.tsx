@@ -29,10 +29,7 @@ describe("horizon board", () => {
   it("groups candidates by sector without presenting a ranking", () => {
     const onSelect = vi.fn();
     render(<HorizonBoard board={board} onSelect={onSelect} onAdvanced={vi.fn()} />);
-    const details = screen.getByText("发现公司").closest("details")!;
-    expect(details.open).toBe(false);
-    fireEvent.click(screen.getByText("发现公司"));
-    expect(details.open).toBe(true);
+    expect(screen.getByRole("heading", { name: "发现公司" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "信息技术" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "医疗保健" })).toBeInTheDocument();
     expect(screen.queryByText("综合分位")).not.toBeInTheDocument();
@@ -46,7 +43,6 @@ describe("horizon board", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-10-13T12:00:00Z"));
     render(<HorizonBoard board={board} paper={paper} onSelect={vi.fn()} onAdvanced={vi.fn()} />);
-    fireEvent.click(screen.getByText("发现公司"));
     fireEvent.click(screen.getByRole("button", { name: "偏短线" }));
     expect(screen.getByRole("heading", { name: "金融" })).toBeInTheDocument();
     expect(screen.getByText(/多数股票的价格截至 2026-10-12/)).toBeInTheDocument();
@@ -56,14 +52,12 @@ describe("horizon board", () => {
 
   it("does not fill an empty short-term list with stale candidates", () => {
     render(<HorizonBoard board={{ ...board, short: [] }} onSelect={vi.fn()} onAdvanced={vi.fn()} />);
-    fireEvent.click(screen.getByText("发现公司"));
     fireEvent.click(screen.getByRole("button", { name: "偏短线" }));
     expect(screen.getByText("短线名单暂时停用")).toBeInTheDocument();
   });
 
   it("hides short-term candidates when the published data is stale", () => {
     render(<HorizonBoard board={board} paper={{ ...paper, status: "paused", reason: "行情滞后" }} onSelect={vi.fn()} onAdvanced={vi.fn()} />);
-    fireEvent.click(screen.getByText("发现公司"));
     fireEvent.click(screen.getByRole("button", { name: "偏短线" }));
     expect(screen.getByText("短线名单暂时停用")).toBeInTheDocument();
     expect(screen.queryByText("Gamma")).not.toBeInTheDocument();
