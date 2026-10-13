@@ -23,9 +23,9 @@ describe("paper desk", () => {
     expect(screen.getByRole("region", { name: "模拟买入决定" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "模拟卖出决定" })).toHaveTextContent("AAPL");
     expect(screen.queryByRole("button", { name: "下一条模拟卖出决定" })).not.toBeInTheDocument();
-    const details = screen.getByText("研究详情与虚拟仓").closest("details")!;
+    const details = screen.getByText("虚拟仓与决策依据").closest("details")!;
     expect(details.open).toBe(false);
-    fireEvent.click(screen.getByText("研究详情与虚拟仓"));
+    fireEvent.click(screen.getByText("虚拟仓与决策依据"));
     expect(details.open).toBe(true);
     expect(screen.getByText("50 股")).toBeInTheDocument();
     expect(screen.getByText(/模拟资产/)).toBeInTheDocument();
@@ -38,6 +38,7 @@ describe("paper desk", () => {
     vi.setSystemTime(new Date("2026-10-14T12:00:00Z"));
     render(<PaperDesk report={report} onSelect={vi.fn()} />);
     expect(screen.getByText("已暂停")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("等待 2026-10-13 的行情（目前 2026-10-12）");
     expect(screen.getByRole("region", { name: "模拟卖出决定" })).not.toHaveTextContent("AAPL");
     expect(screen.getByText("50 股")).toBeInTheDocument();
     expect(screen.getByText(/模拟起始资金/)).toHaveTextContent("模拟资产暂不可估值");

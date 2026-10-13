@@ -123,8 +123,11 @@ export function PaperDesk({ report, error = false, onSelect, onRetry }: {
   const equity = valued && report
     ? report.cash + report.positions.reduce((sum, position) => sum + position.shares * position.mark_price!, 0)
     : null;
-  const empty = error ? "数据不可用，暂不显示买卖决定" : !report ? "正在读取模拟记录…"
-    : paused ? "行情滞后，暂停决策" : "本轮没有满足全部条件的决定";
+  const empty = error ? "数据暂不可用" : !report ? "正在读取模拟记录…"
+    : paused ? "等待有效行情" : "本轮暂无符合条件的决定";
+  const warning = staleOnDevice || (report?.data_date !== report?.expected_date)
+    ? `等待 ${expectedCloseDate()} 的行情（目前 ${report?.data_date || "未知"}），模拟买卖暂停。`
+    : `${report?.reason || "行情暂不可用"}，模拟买卖暂停。`;
 
   return (
     <section className="paper-desk" aria-label="每日模拟决策">
@@ -135,16 +138,14 @@ export function PaperDesk({ report, error = false, onSelect, onRetry }: {
         </span>
       </div>
       {report && <p className="paper-asof">行情 {report.data_date || "未知"} · 最近决策 {report.last_decision_date || "尚无"}</p>}
-      {report && paused && <p className="paper-warning" role="status">
-        {staleOnDevice ? `最近一个工作日应为 ${expectedCloseDate()}，页面数据仍是 ${report.data_date || "未知"}` : report.reason}。本轮不显示买卖决定，也不执行旧挂单。
-      </p>}
+      {report && paused && <p className="paper-warning" role="status">{warning}</p>}
       {error && onRetry && <button className="paper-retry-button" type="button" onClick={onRetry}>重试</button>}
       <div className="paper-signals">
         <OrderLane side="buy" orders={pending.filter((order) => order.side === "buy")} empty={empty} onSelect={onSelect} />
         <OrderLane side="sell" orders={pending.filter((order) => order.side === "sell")} empty={empty} onSelect={onSelect} />
       </div>
       {report && <details className="paper-research">
-        <summary>研究详情与虚拟仓</summary>
+        <summary>虚拟仓与决策依据</summary>
         <div className="paper-research-content">
           <p className="paper-equity">模拟起始资金 {money(report.starting_cash)} · {equity === null ? "模拟资产暂不可估值" : <>模拟资产 <strong>{money(equity)}</strong> <span>{`${((equity / report.starting_cash - 1) * 100).toFixed(2)}%`}</span></>}</p>
           <h3>虚拟持仓 <span>{report.positions.length}</span></h3>
