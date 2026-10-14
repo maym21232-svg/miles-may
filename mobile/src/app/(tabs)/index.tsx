@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CandidateRow } from '../../components/CandidateRow';
-import { expectedCloseDate, isPaperCurrent, isShortBoardCurrent, money, sectorName } from '../../lib/data';
+import { expectedCloseDate, isPaperCurrent, isShortBoardCurrent, money, paperEquity, sectorName } from '../../lib/data';
 import { useResearch } from '../../lib/ResearchContext';
 import { color } from '../../lib/theme';
 
@@ -35,6 +35,7 @@ export default function DiscoverScreen() {
   const orders = paperCurrent ? data!.paper.pending : [];
   const buys = orders.filter((order) => order.side?.toLowerCase() === 'buy');
   const sells = orders.filter((order) => order.side?.toLowerCase() === 'sell');
+  const equity = data ? paperEquity(data.paper, paperCurrent) : null;
 
   return (
     <ScrollView style={styles.page} contentContainerStyle={[styles.body, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]} refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void refresh()} tintColor={color.green} />}>
@@ -77,7 +78,9 @@ export default function DiscoverScreen() {
         </Pressable>
         {showMethod && <View style={styles.methodBody}>
           <Text style={styles.methodLine}>数据日期：{data.paper.data_date}　预期：{data.paper.expected_date}</Text>
-          <Text style={styles.methodLine}>虚拟持仓：{data.paper.positions.length} 只　现金：${data.paper.cash.toLocaleString('en-US')}</Text>
+          {typeof data.paper.starting_cash === 'number' && <Text style={styles.methodLine}>起始模拟资金：{money(data.paper.starting_cash)}</Text>}
+          <Text style={styles.methodLine}>虚拟持仓：{data.paper.positions.length} 只　现金：{money(data.paper.cash)}</Text>
+          <Text style={styles.methodLine}>{equity === null ? '组合净值：行情不足，暂不估值' : `组合净值：${money(equity)}${data.paper.starting_cash ? `（${((equity / data.paper.starting_cash - 1) * 100).toFixed(2)}%）` : ''}`}</Text>
           <Text style={styles.methodLine}>{data.paper.method}</Text>
           {!!orders.length && <Text style={styles.methodCaption}>待下个开盘模拟执行</Text>}
           {!orders.length && <Text style={styles.methodLine}>本轮没有待执行的模拟买卖。</Text>}

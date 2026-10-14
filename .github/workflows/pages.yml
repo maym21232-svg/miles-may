@@ -3,6 +3,11 @@ name: pages
 on:
   push:
     branches: [main]
+    paths:
+      - "ui/**"
+      - "scripts/**"
+      - "paper/**"
+      - ".github/workflows/pages.yml"
   schedule:
     - cron: "35 11 * * *"
   workflow_dispatch:

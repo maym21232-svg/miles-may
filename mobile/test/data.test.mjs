@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { expectedCloseDate, fetchJson, isPaperCurrent, isShortBoardCurrent, loadCompanyDetail, loadPriceHistory, loadUniverse, sectorName } from '../src/lib/data.ts';
+import { expectedCloseDate, fetchJson, isPaperCurrent, isShortBoardCurrent, loadCompanyDetail, loadPriceHistory, loadUniverse, paperEquity, sectorName } from '../src/lib/data.ts';
 
 function report(overrides = {}) {
   return {
@@ -44,6 +44,13 @@ test('hides short-term candidates when price coverage or connection is stale', (
   assert.equal(isShortBoardCurrent(data), true);
   assert.equal(isShortBoardCurrent({ ...data, source: 'cache' }), false);
   assert.equal(isShortBoardCurrent({ ...data, board: { prices_typical_date: '2000-01-01' } }), false);
+});
+
+test('does not value simulated holdings from stale or missing marks', () => {
+  const paper = { cash: 500, positions: [{ symbol: 'A', shares: 2, mark_price: 100 }] };
+  assert.equal(paperEquity(paper, true), 700);
+  assert.equal(paperEquity(paper, false), null);
+  assert.equal(paperEquity({ ...paper, positions: [{ symbol: 'A', shares: 2, mark_price: null }] }, true), null);
 });
 
 test('loads price bars from the matching shard and rejects invalid prices', async () => {

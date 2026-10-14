@@ -136,6 +136,14 @@ export function isShortBoardCurrent(data: ResearchData): boolean {
     && data.board.prices_typical_date === data.paper.data_date;
 }
 
+export function paperEquity(paper: PaperPortfolio, current: boolean): number | null {
+  if (!current || !Number.isFinite(paper.cash) || !Array.isArray(paper.positions)) return null;
+  if (paper.positions.some((position) => !Number.isFinite(position.shares) || position.shares <= 0
+    || typeof position.mark_price !== 'number' || !Number.isFinite(position.mark_price)
+    || position.mark_price <= 0)) return null;
+  return paper.cash + paper.positions.reduce((total, position) => total + position.shares * position.mark_price!, 0);
+}
+
 export function percent(value?: number): string {
   return typeof value === 'number' ? `${(value * 100).toFixed(1)}%` : '—';
 }
