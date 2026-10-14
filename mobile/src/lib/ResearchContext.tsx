@@ -23,6 +23,7 @@ function cachedResearch(saved: string | null): ResearchData | null {
 
 type ResearchContextValue = {
   data: ResearchData | null;
+  now: Date;
   error: string | null;
   loading: boolean;
   refresh: () => Promise<void>;
@@ -35,6 +36,7 @@ const ResearchContext = createContext<ResearchContextValue | null>(null);
 
 export function ResearchProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<ResearchData | null>(null);
+  const [now, setNow] = useState(() => new Date());
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [watchlist, setWatchlist] = useState<string[]>([]);
@@ -126,12 +128,15 @@ export function ResearchProvider({ children }: { children: React.ReactNode }) {
       if (Date.now() - lastRefreshAttempt.current >= 15 * 60_000) void refresh();
     };
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') maybeRefresh();
+      if (state === 'active') { setNow(new Date()); maybeRefresh(); }
     });
+    const clock = setInterval(() => {
+      if (AppState.currentState === 'active') setNow(new Date());
+    }, 60_000);
     const timer = setInterval(() => {
       if (AppState.currentState === 'active') maybeRefresh();
     }, 15 * 60_000);
-    return () => { subscription.remove(); clearInterval(timer); };
+    return () => { subscription.remove(); clearInterval(timer); clearInterval(clock); };
   }, [refresh]);
 
   useEffect(() => {
@@ -144,8 +149,8 @@ export function ResearchProvider({ children }: { children: React.ReactNode }) {
       : [...current, symbol]);
   }, []);
 
-  const value = useMemo(() => ({ data, error, loading, refresh, watchlist, toggleWatchlist, universe }),
-    [data, error, loading, refresh, watchlist, toggleWatchlist, universe]);
+  const value = useMemo(() => ({ data, now, error, loading, refresh, watchlist, toggleWatchlist, universe }),
+    [data, now, error, loading, refresh, watchlist, toggleWatchlist, universe]);
   return <ResearchContext.Provider value={value}>{children}</ResearchContext.Provider>;
 }
 

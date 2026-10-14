@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { PaperDesk, expectedCloseDate, type PaperReport } from "../components/PaperDesk";
 
 const report: PaperReport = {
-  version: 1, status: "ready", reason: null, data_date: "2026-10-12",
+  version: 1, status: "ready", reason: null, generated_at: "2026-10-13T10:00:00Z", data_date: "2026-10-12",
   expected_date: "2026-10-12", coverage: 0.99, cash: 95_000,
   starting_cash: 100_000, last_decision_date: "2026-10-12", method: "模拟规则",
   decisions: [], fills: [],
@@ -50,6 +50,23 @@ describe("paper desk", () => {
     render(<PaperDesk report={report} onSelect={vi.fn()} />);
     expect(screen.getByText("已暂停")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "模拟卖出决定" })).not.toHaveTextContent("AAPL");
+  });
+
+  it("pauses mismatched, expired and invalid reports even when the price date matches", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-13T12:00:00Z"));
+    for (const patch of [
+      { expected_date: "2026-10-09" },
+      { generated_at: "2026-10-11T23:00:00Z" },
+      { generated_at: "not-a-date" },
+      { generated_at: "2026-10-13T12:06:00Z" },
+    ]) {
+      const { unmount } = render(<PaperDesk report={{ ...report, ...patch }} onSelect={vi.fn()} />);
+      expect(screen.getByText("已暂停")).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "模拟卖出决定" })).not.toHaveTextContent("AAPL");
+      expect(screen.getByText(/模拟起始资金/)).toHaveTextContent("模拟资产暂不可估值");
+      unmount();
+    }
   });
 
   it("uses Friday as the previous weekday on Monday", () => {

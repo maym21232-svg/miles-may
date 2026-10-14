@@ -3,25 +3,27 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CandidateRow } from '../../components/CandidateRow';
-import { expectedCloseDate, isPaperCurrent, isShortBoardCurrent, money, paperEquity, sectorName } from '../../lib/data';
+import { currentShortCandidates, expectedCloseDate, isPaperCurrent, isShortBoardCurrent, money, paperEquity, sectorName } from '../../lib/data';
 import { useResearch } from '../../lib/ResearchContext';
 import { color } from '../../lib/theme';
 
 export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
-  const { data, error, loading, refresh, universe } = useResearch();
+  const { data, now, error, loading, refresh, universe } = useResearch();
   const [term, setTerm] = useState('');
   const [horizon, setHorizon] = useState<'long' | 'short'>('long');
   const [sector, setSector] = useState<string | null>(null);
   const [showMethod, setShowMethod] = useState(false);
   const [visibleCandidates, setVisibleCandidates] = useState(30);
   const [visibleSearch, setVisibleSearch] = useState(30);
-  const paperCurrent = !!data && data.source === 'network' && isPaperCurrent(data.paper);
-  const shortCurrent = !!data && isShortBoardCurrent(data);
+  const paperCurrent = !!data && data.source === 'network' && isPaperCurrent(data.paper, now);
+  const shortCurrent = !!data && isShortBoardCurrent(data, now);
   const candidates = useMemo(() => {
-    const list = horizon === 'short' && !shortCurrent ? [] : data?.board[horizon] ?? [];
+    const list = horizon === 'short'
+      ? data ? currentShortCandidates(data, now) : []
+      : data?.board.long ?? [];
     return list.filter((item) => !sector || item.sector === sector);
-  }, [data, horizon, sector, shortCurrent]);
+  }, [data, horizon, now, sector]);
   const searchResults = useMemo(() => {
     const needle = term.trim().toLowerCase();
     if (!needle) return [];
@@ -61,7 +63,7 @@ export default function DiscoverScreen() {
           <View style={styles.stat}><Text style={styles.statLabel}>长线候选</Text><Text style={styles.statValue}>{data.board.long.length} 家</Text></View>
           <View style={[styles.stat, styles.statAmber]}><Text style={styles.statLabel}>每日模拟决策</Text><Text style={[styles.statValue, { color: paperCurrent ? color.green : color.amber }]}>{paperCurrent ? '已更新' : '已暂停'}</Text></View>
         </View>
-        {!paperCurrent && <View style={styles.warning}><Ionicons name="warning-outline" size={20} color={color.amber} /><Text style={styles.warningText}>{data.source === 'cache' ? '当前离线，显示上次保存的数据；模拟买卖暂停。' : data.paper.data_date !== expectedCloseDate() ? `等待 ${expectedCloseDate()} 的行情（目前 ${data.paper.data_date || '未知'}），模拟买卖暂停。` : data.paper.reason || '行情日期不足或报告过期，模拟买卖暂停。'}</Text></View>}
+        {!paperCurrent && <View style={styles.warning}><Ionicons name="warning-outline" size={20} color={color.amber} /><Text style={styles.warningText}>{data.source === 'cache' ? '当前离线，显示上次保存的数据；模拟买卖暂停。' : data.paper.data_date !== expectedCloseDate(now) ? `等待 ${expectedCloseDate(now)} 的行情（目前 ${data.paper.data_date || '未知'}），模拟买卖暂停。` : data.paper.reason || '行情日期不足或报告过期，模拟买卖暂停。'}</Text></View>}
 
         <View style={[styles.signal, { backgroundColor: color.mint }]}>
           <View style={[styles.signalIcon, { backgroundColor: color.green }]}><Ionicons name="arrow-up" color={color.white} size={22} /></View>
@@ -108,7 +110,7 @@ export default function DiscoverScreen() {
         <Text style={styles.horizonNote}>{horizon === 'long' ? '1–3 年研究 · 财务质量与现金流符合条件，每季财报后复核。' : '2–6 周观察 · 近 20/60 日趋势符合条件，至少每周复核。'}</Text>
         <Text style={styles.caveat}>条件筛选不是上涨概率，也不是买卖建议。</Text>
         {horizon === 'short' && !shortCurrent && <Text style={styles.staleNote}>行情日期未通过校验，短线候选名单暂停展示。</Text>}
-        {horizon === 'short' && shortCurrent && <Text style={styles.horizonNote}>多数股票收盘价截至 {data.board.prices_typical_date}。</Text>}
+        {horizon === 'short' && shortCurrent && <Text style={styles.horizonNote}>仅展示收盘价已更新到 {data.board.prices_typical_date} 的公司。</Text>}
         {!!sectors.length && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectors}>
           <Pressable onPress={() => { setSector(null); setVisibleCandidates(30); }} style={[styles.chip, !sector && styles.chipActive]}><Text style={[styles.chipText, !sector && styles.chipTextActive]}>全部</Text></Pressable>
           {sectors.map((name) => <Pressable key={name} onPress={() => { setSector(name); setVisibleCandidates(30); }} style={[styles.chip, sector === name && styles.chipActive]}><Text style={[styles.chipText, sector === name && styles.chipTextActive]}>{sectorName(name)}</Text></Pressable>)}

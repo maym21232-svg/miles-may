@@ -25,6 +25,7 @@ export interface PaperReport {
   version: number;
   status: "ready" | "paused";
   reason: string | null;
+  generated_at: string;
   data_date: string | null;
   expected_date: string;
   coverage: number;
@@ -50,7 +51,11 @@ export function expectedCloseDate(now = new Date()): string {
 }
 
 export function paperPaused(report: PaperReport | null, now = new Date()): boolean {
-  return !!report && (report.status !== "ready" || report.data_date !== expectedCloseDate(now));
+  if (!report) return false;
+  const age = now.getTime() - Date.parse(report.generated_at);
+  return report.status !== "ready" || report.data_date !== report.expected_date ||
+    report.data_date !== expectedCloseDate(now) || !Number.isFinite(age) ||
+    age < -5 * 60_000 || age >= 36 * 60 * 60_000;
 }
 
 function OrderLane({ side, orders, empty, onSelect }: {
@@ -114,15 +119,16 @@ function OrderLane({ side, orders, empty, onSelect }: {
   );
 }
 
-export function PaperDesk({ report, error = false, onSelect, onRetry, showHeading = true }: {
+export function PaperDesk({ report, error = false, onSelect, onRetry, showHeading = true, now = new Date() }: {
   report: PaperReport | null;
   error?: boolean;
   onSelect: (symbol: string) => void;
   onRetry?: () => void;
   showHeading?: boolean;
+  now?: Date;
 }) {
-  const paused = paperPaused(report);
-  const staleOnDevice = report?.status === "ready" && report.data_date !== expectedCloseDate();
+  const paused = paperPaused(report, now);
+  const staleOnDevice = report?.status === "ready" && report.data_date !== expectedCloseDate(now);
   const pending = paused ? [] : report?.pending ?? [];
   const valued = !!report && !paused && report.positions.every((position) =>
     position.mark_price != null && Number.isFinite(position.mark_price));
@@ -131,9 +137,11 @@ export function PaperDesk({ report, error = false, onSelect, onRetry, showHeadin
     : null;
   const empty = error ? "数据暂不可用" : !report ? "正在读取模拟记录…"
     : paused ? "等待有效行情" : "本轮暂无符合条件的决定";
-  const warning = staleOnDevice || (report?.data_date !== report?.expected_date)
-    ? `等待 ${expectedCloseDate()} 的行情（目前 ${report?.data_date || "未知"}），模拟买卖暂停。`
-    : `${report?.reason || "行情暂不可用"}，模拟买卖暂停。`;
+  const warning = staleOnDevice
+    ? `等待 ${expectedCloseDate(now)} 的行情（目前 ${report?.data_date || "未知"}），模拟买卖暂停。`
+    : report?.data_date !== report?.expected_date
+      ? "报告的行情日期与预期交易日不一致，模拟买卖暂停。"
+      : `${report?.reason || "报告过期或生成时间无效"}，模拟买卖暂停。`;
 
   return (
     <section className="paper-desk" aria-label="每日模拟决策">

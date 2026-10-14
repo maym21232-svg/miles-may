@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { expectedCloseDate, fetchJson, isPaperCurrent, isShortBoardCurrent, loadCompanyDetail, loadPriceHistory, loadUniverse, paperEquity, sectorName } from '../src/lib/data.ts';
+import { currentShortCandidates, expectedCloseDate, fetchJson, isPaperCurrent, isShortBoardCurrent, loadCompanyDetail, loadPriceHistory, loadUniverse, paperEquity, sectorName } from '../src/lib/data.ts';
 
 function report(overrides = {}) {
   return {
@@ -45,6 +45,26 @@ test('hides short-term candidates when price coverage or connection is stale', (
   assert.equal(isShortBoardCurrent(data), true);
   assert.equal(isShortBoardCurrent({ ...data, source: 'cache' }), false);
   assert.equal(isShortBoardCurrent({ ...data, board: { prices_typical_date: '2000-01-01' } }), false);
+  const before = new Date('2026-10-13T19:59:00Z');
+  const after = new Date('2026-10-13T20:00:00Z');
+  const priorDay = report({ generated_at: before.toISOString(), data_date: '2026-10-12', expected_date: '2026-10-12' });
+  assert.equal(isShortBoardCurrent({ ...data, board: { prices_typical_date: '2026-10-12' }, paper: priorDay }, before), true);
+  assert.equal(isShortBoardCurrent({ ...data, board: { prices_typical_date: '2026-10-12' }, paper: priorDay }, after), false);
+});
+
+test('shows only short-term candidates with a price from the validated trading day', () => {
+  const now = new Date('2026-10-13T12:00:00Z');
+  const data = {
+    source: 'network',
+    paper: report({ generated_at: now.toISOString(), data_date: '2026-10-12', expected_date: '2026-10-12' }),
+    board: { prices_typical_date: '2026-10-12', short: [
+      { symbol: 'AAA', price_date: '2026-10-12' },
+      { symbol: 'OLD', price_date: '2026-10-09' },
+      { symbol: 'NONE' },
+    ] },
+  };
+  assert.deepEqual(currentShortCandidates(data, now).map((row) => row.symbol), ['AAA']);
+  assert.deepEqual(currentShortCandidates({ ...data, source: 'cache' }, now), []);
 });
 
 test('does not value simulated holdings from stale or missing marks', () => {

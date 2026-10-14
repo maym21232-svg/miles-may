@@ -1,4 +1,4 @@
-import type { CompanyDetail, HorizonBoard, PaperPortfolio, PriceBar, ResearchData, SearchHit } from './types';
+import type { Candidate, CompanyDetail, HorizonBoard, PaperPortfolio, PriceBar, ResearchData, SearchHit } from './types';
 
 export const SITE = 'https://maym21232-svg.github.io/miles-may/';
 
@@ -132,10 +132,16 @@ export function isPaperCurrent(paper: PaperPortfolio, now = new Date()): boolean
     && age < 36 * 60 * 60_000;
 }
 
-export function isShortBoardCurrent(data: ResearchData): boolean {
+export function isShortBoardCurrent(data: ResearchData, now = new Date()): boolean {
   return data.source === 'network'
-    && isPaperCurrent(data.paper)
+    && isPaperCurrent(data.paper, now)
     && data.board.prices_typical_date === data.paper.data_date;
+}
+
+export function currentShortCandidates(data: ResearchData, now = new Date()): Candidate[] {
+  return isShortBoardCurrent(data, now)
+    ? data.board.short.filter((candidate) => candidate.price_date === data.paper.data_date)
+    : [];
 }
 
 export function paperEquity(paper: PaperPortfolio, current: boolean): number | null {

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { CalendarDays, ChevronRight } from "lucide-react";
 import { researchValue } from "../research-format";
 import { sectorLabel } from "../research-labels";
@@ -66,8 +66,16 @@ export function HorizonBoard({ board, onSelect, onAdvanced, paper, paperError, o
   const [horizon, setHorizon] = useState<Horizon>("long");
   const [sector, setSector] = useState<string | null>(null);
   const [visible, setVisible] = useState(25);
-  const shortPaused = !paper || paperPaused(paper) || board.prices_typical_date !== paper.data_date;
-  const rows = horizon === "long" ? board.long : shortPaused ? [] : board.short;
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const tick = () => { if (!document.hidden) setNow(new Date()); };
+    const timer = window.setInterval(tick, 60_000);
+    document.addEventListener("visibilitychange", tick);
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", tick); };
+  }, []);
+  const shortPaused = !paper || paperPaused(paper, now) || board.prices_typical_date !== paper.data_date;
+  const rows = horizon === "long" ? board.long : shortPaused ? []
+    : board.short.filter((candidate) => candidate.price_date === paper?.data_date);
   const sectors = useMemo(() => bySector(rows), [rows]);
   const shown = sector ? sectors.filter(([name]) => name === sector) : sectors;
   const chooseHorizon = (next: Horizon) => {
@@ -86,10 +94,10 @@ export function HorizonBoard({ board, onSelect, onAdvanced, paper, paperError, o
         <div className="board-overview-coverage">{overview}</div>
         <div className="board-overview-state">
           <CalendarDays aria-hidden="true" />
-          <span><small>每日模拟决策</small><strong>{paperError ? "数据不可用" : !paper ? "加载中" : paperPaused(paper) ? "已暂停" : "已评估"}</strong></span>
+          <span><small>每日模拟决策</small><strong>{paperError ? "数据不可用" : !paper ? "加载中" : paperPaused(paper, now) ? "已暂停" : "已评估"}</strong></span>
         </div>
       </div>}
-      <PaperDesk report={paper ?? null} error={paperError} onSelect={onSelect} onRetry={onPaperRetry} showHeading={!overview} />
+      <PaperDesk report={paper ?? null} error={paperError} onSelect={onSelect} onRetry={onPaperRetry} showHeading={!overview} now={now} />
       <div className="board-heading">
         <div>
           <h1>发现公司</h1>
@@ -110,7 +118,7 @@ export function HorizonBoard({ board, onSelect, onAdvanced, paper, paperError, o
       <p className="board-caveat">条件筛选不是上涨概率或投资建议。打开公司查看依据、数据日期与风险。</p>
       {horizon === "short" && shortPaused && <p className="board-freshness">行情过期，短线候选名单已暂停展示。</p>}
       {horizon === "short" && !shortPaused && board.prices_typical_date && (
-        <p className="board-freshness">多数股票的价格截至 {board.prices_typical_date}；下方仅展示最近 7 天内有有效收盘价、且历史足够的公司。</p>
+        <p className="board-freshness">仅展示收盘价已更新到 {board.prices_typical_date} 的公司；历史数据可能仍有缺口。</p>
       )}
       {rows.length === 0 ? (
         <div className="board-empty">

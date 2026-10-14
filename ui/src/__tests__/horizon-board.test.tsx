@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HorizonBoard, type HorizonBoardData } from "../components/HorizonBoard";
 import type { PaperReport } from "../components/PaperDesk";
@@ -12,11 +12,12 @@ const board: HorizonBoardData = {
   ],
   short: [
     { symbol: "CCC", name: "Gamma", sector: "Financials", price_date: "2026-10-12", return_20d: 0.05, return_60d: 0.1 },
+    { symbol: "OLD", name: "Old price", sector: "Financials", price_date: "2026-10-09", return_20d: 0.05, return_60d: 0.1 },
   ],
 };
 
 const paper: PaperReport = {
-  version: 1, status: "ready", reason: null, data_date: "2026-10-12",
+  version: 1, status: "ready", reason: null, generated_at: "2026-10-13T10:00:00Z", data_date: "2026-10-12",
   expected_date: "2026-10-12", coverage: 0.99, cash: 100_000,
   starting_cash: 100_000, positions: [], pending: [], last_decision_date: "2026-10-12",
   decisions: [], fills: [],
@@ -45,9 +46,21 @@ describe("horizon board", () => {
     render(<HorizonBoard board={board} paper={paper} onSelect={vi.fn()} onAdvanced={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "偏短线" }));
     expect(screen.getByRole("heading", { name: "金融" })).toBeInTheDocument();
-    expect(screen.getByText(/多数股票的价格截至 2026-10-12/)).toBeInTheDocument();
+    expect(screen.getByText(/仅展示收盘价已更新到 2026-10-12/)).toBeInTheDocument();
     expect(screen.getByText("近 20 日 +5.0%")).toBeInTheDocument();
+    expect(screen.queryByText("Old price")).not.toBeInTheDocument();
     expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+  });
+
+  it("pauses visible short-term candidates when the close cutoff passes without a fetch", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-13T19:59:00Z"));
+    render(<HorizonBoard board={board} paper={paper} onSelect={vi.fn()} onAdvanced={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "偏短线" }));
+    expect(screen.getByText("Gamma")).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(60_000));
+    expect(screen.getByText("短线名单暂时停用")).toBeInTheDocument();
+    expect(screen.queryByText("Gamma")).not.toBeInTheDocument();
   });
 
   it("does not fill an empty short-term list with stale candidates", () => {
