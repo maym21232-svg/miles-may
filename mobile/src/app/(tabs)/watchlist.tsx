@@ -3,14 +3,14 @@ import { Link } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CandidateRow } from '../../components/CandidateRow';
-import { isShortBoardCurrent } from '../../lib/data';
+import { currentShortCandidates } from '../../lib/data';
 import { useResearch } from '../../lib/ResearchContext';
 import { color } from '../../lib/theme';
 
 export default function WatchlistScreen() {
   const insets = useSafeAreaInsets();
-  const { data, watchlist, universe, toggleWatchlist } = useResearch();
-  const shortCurrent = !!data && isShortBoardCurrent(data);
+  const { data, now, watchlist, universe, toggleWatchlist } = useResearch();
+  const currentShort = new Set(data ? currentShortCandidates(data, now).map((item) => item.symbol) : []);
   const candidates = [...(data?.board.long ?? []), ...(data?.board.short ?? [])];
   const saved = watchlist.map((symbol) => {
     const candidate = candidates.find((item) => item.symbol === symbol);
@@ -25,7 +25,7 @@ export default function WatchlistScreen() {
       {!watchlist.length && <View style={styles.empty}><Ionicons name="star-outline" size={32} color={color.green} /><Text style={styles.emptyTitle}>还没有自选公司</Text><Text style={styles.emptyCopy}>在公司研究页点击星标，就会出现在这里。</Text><Link href="/" style={styles.link}>去发现公司</Link></View>}
       {saved.map((item, index) => <CandidateRow key={watchlist[index]}
         candidate={item ?? { symbol: watchlist[index], name: watchlist[index], sector: '' }}
-        short={shortCurrent && !!item && !data?.board.long.some((long) => long.symbol === item.symbol)}
+        short={!!item && currentShort.has(item.symbol) && !data?.board.long.some((long) => long.symbol === item.symbol)}
         onRemove={() => toggleWatchlist(watchlist[index])} />)}
     </ScrollView>
   );
