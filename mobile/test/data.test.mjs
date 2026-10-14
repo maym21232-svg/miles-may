@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { currentShortCandidates, expectedCloseDate, fetchJson, isPaperCurrent, isShortBoardCurrent, loadCompanyDetail, loadPriceHistory, loadUniverse, paperEquity, sectorName } from '../src/lib/data.ts';
+import { currentShortCandidates, expectedCloseDate, fetchJson, isPaperCurrent, isShortBoardCurrent, loadCompanyDetail, loadPriceHistory, loadUniverse, paperEquity, paperPauseMessage, sectorName } from '../src/lib/data.ts';
 
 function report(overrides = {}) {
   return {
@@ -8,6 +8,7 @@ function report(overrides = {}) {
     generated_at: new Date().toISOString(),
     data_date: expectedCloseDate(),
     expected_date: expectedCloseDate(),
+    coverage: 0.99,
     ...overrides,
   };
 }
@@ -15,6 +16,9 @@ function report(overrides = {}) {
 test('accepts only a fresh, ready report covering its expected trading date', () => {
   assert.equal(isPaperCurrent(report()), true);
   assert.equal(isPaperCurrent(report({ status: 'paused' })), false);
+  assert.equal(isPaperCurrent(report({ coverage: 0.94 })), false);
+  assert.equal(isPaperCurrent(report({ coverage: Number.NaN })), false);
+  assert.equal(isPaperCurrent(report({ coverage: 1.01 })), false);
   assert.equal(isPaperCurrent(report({ data_date: '2000-01-01' })), false);
   assert.equal(isPaperCurrent(report({ expected_date: '2000-01-01' })), false);
   assert.equal(isPaperCurrent(report({ generated_at: new Date(Date.now() - 37 * 60 * 60_000).toISOString() })), false);
@@ -65,6 +69,16 @@ test('shows only short-term candidates with a price from the validated trading d
   };
   assert.deepEqual(currentShortCandidates(data, now).map((row) => row.symbol), ['AAA']);
   assert.deepEqual(currentShortCandidates({ ...data, source: 'cache' }, now), []);
+});
+
+test('explains why a paper report is paused', () => {
+  const now = new Date('2026-10-13T12:00:00Z');
+  const paper = report({ generated_at: now.toISOString(), data_date: '2026-10-12', expected_date: '2026-10-12' });
+  const data = { source: 'network', paper };
+  assert.match(paperPauseMessage({ ...data, source: 'cache' }, now), /离线/);
+  assert.match(paperPauseMessage({ ...data, paper: { ...paper, data_date: '2026-10-09' } }, now), /等待 2026-10-12/);
+  assert.match(paperPauseMessage({ ...data, paper: { ...paper, coverage: 0.9 } }, now), /覆盖率/);
+  assert.match(paperPauseMessage({ ...data, paper: { ...paper, expected_date: '2026-10-09' } }, now), /预期交易日/);
 });
 
 test('does not value simulated holdings from stale or missing marks', () => {

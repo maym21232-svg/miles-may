@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CandidateRow } from '../../components/CandidateRow';
-import { currentShortCandidates, expectedCloseDate, isPaperCurrent, isShortBoardCurrent, money, paperEquity, sectorName } from '../../lib/data';
+import { currentShortCandidates, isPaperCurrent, isShortBoardCurrent, money, paperEquity, paperPauseMessage, sectorName } from '../../lib/data';
 import { useResearch } from '../../lib/ResearchContext';
 import { color } from '../../lib/theme';
 
@@ -63,7 +63,7 @@ export default function DiscoverScreen() {
           <View style={styles.stat}><Text style={styles.statLabel}>长线候选</Text><Text style={styles.statValue}>{data.board.long.length} 家</Text></View>
           <View style={[styles.stat, styles.statAmber]}><Text style={styles.statLabel}>每日模拟决策</Text><Text style={[styles.statValue, { color: paperCurrent ? color.green : color.amber }]}>{paperCurrent ? '已更新' : '已暂停'}</Text></View>
         </View>
-        {!paperCurrent && <View style={styles.warning}><Ionicons name="warning-outline" size={20} color={color.amber} /><Text style={styles.warningText}>{data.source === 'cache' ? '当前离线，显示上次保存的数据；模拟买卖暂停。' : data.paper.data_date !== expectedCloseDate(now) ? `等待 ${expectedCloseDate(now)} 的行情（目前 ${data.paper.data_date || '未知'}），模拟买卖暂停。` : data.paper.reason || '行情日期不足或报告过期，模拟买卖暂停。'}</Text></View>}
+        {!paperCurrent && <View style={styles.warning}><Ionicons name="warning-outline" size={20} color={color.amber} /><Text style={styles.warningText}>{paperPauseMessage(data, now)}</Text></View>}
 
         <View style={[styles.signal, { backgroundColor: color.mint }]}>
           <View style={[styles.signalIcon, { backgroundColor: color.green }]}><Ionicons name="arrow-up" color={color.white} size={22} /></View>

@@ -125,6 +125,9 @@ export function expectedCloseDate(now = new Date()): string {
 export function isPaperCurrent(paper: PaperPortfolio, now = new Date()): boolean {
   const age = now.getTime() - Date.parse(paper.generated_at);
   return paper.status === 'ready'
+    && Number.isFinite(paper.coverage)
+    && paper.coverage >= 0.95
+    && paper.coverage <= 1
     && paper.data_date === paper.expected_date
     && paper.data_date === expectedCloseDate(now)
     && Number.isFinite(age)
@@ -136,6 +139,21 @@ export function isShortBoardCurrent(data: ResearchData, now = new Date()): boole
   return data.source === 'network'
     && isPaperCurrent(data.paper, now)
     && data.board.prices_typical_date === data.paper.data_date;
+}
+
+export function paperPauseMessage(data: ResearchData, now = new Date()): string {
+  if (data.source === 'cache') return '当前离线，显示上次保存的数据；模拟买卖暂停。';
+  const expected = expectedCloseDate(now);
+  if (data.paper.data_date !== expected) {
+    return `等待 ${expected} 的行情（目前 ${data.paper.data_date || '未知'}），模拟买卖暂停。`;
+  }
+  if (!Number.isFinite(data.paper.coverage) || data.paper.coverage < 0.95 || data.paper.coverage > 1) {
+    return '行情覆盖率未通过校验（要求至少 95%），模拟买卖暂停。';
+  }
+  if (data.paper.expected_date !== data.paper.data_date) {
+    return '报告预期交易日与行情不一致，模拟买卖暂停。';
+  }
+  return data.paper.reason || '报告已过期或生成时间无效，模拟买卖暂停。';
 }
 
 export function currentShortCandidates(data: ResearchData, now = new Date()): Candidate[] {

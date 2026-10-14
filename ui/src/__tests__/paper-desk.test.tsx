@@ -57,6 +57,8 @@ describe("paper desk", () => {
     vi.setSystemTime(new Date("2026-10-13T12:00:00Z"));
     for (const patch of [
       { expected_date: "2026-10-09" },
+      { coverage: 0.94 },
+      { coverage: 1.01 },
       { generated_at: "2026-10-11T23:00:00Z" },
       { generated_at: "not-a-date" },
       { generated_at: "2026-10-13T12:06:00Z" },

@@ -53,7 +53,9 @@ export function expectedCloseDate(now = new Date()): string {
 export function paperPaused(report: PaperReport | null, now = new Date()): boolean {
   if (!report) return false;
   const age = now.getTime() - Date.parse(report.generated_at);
-  return report.status !== "ready" || report.data_date !== report.expected_date ||
+  return report.status !== "ready" || !Number.isFinite(report.coverage) ||
+    report.coverage < 0.95 || report.coverage > 1 ||
+    report.data_date !== report.expected_date ||
     report.data_date !== expectedCloseDate(now) || !Number.isFinite(age) ||
     age < -5 * 60_000 || age >= 36 * 60 * 60_000;
 }
@@ -139,6 +141,8 @@ export function PaperDesk({ report, error = false, onSelect, onRetry, showHeadin
     : paused ? "等待有效行情" : "本轮暂无符合条件的决定";
   const warning = staleOnDevice
     ? `等待 ${expectedCloseDate(now)} 的行情（目前 ${report?.data_date || "未知"}），模拟买卖暂停。`
+    : report && (!Number.isFinite(report.coverage) || report.coverage < 0.95 || report.coverage > 1)
+      ? "当日行情覆盖率未通过校验（要求至少 95%），模拟买卖暂停。"
     : report?.data_date !== report?.expected_date
       ? "报告的行情日期与预期交易日不一致，模拟买卖暂停。"
       : `${report?.reason || "报告过期或生成时间无效"}，模拟买卖暂停。`;

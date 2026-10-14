@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { expectedCloseDate, isPaperCurrent, percent } from '../../lib/data';
+import { isPaperCurrent, paperPauseMessage, percent } from '../../lib/data';
 import { useResearch } from '../../lib/ResearchContext';
 import { color } from '../../lib/theme';
 
@@ -35,7 +35,7 @@ export default function StatusScreen() {
         <Fact label="预期交易日期" value={data?.paper.expected_date ?? '—'} />
         <Fact label="行情覆盖" value={data ? percent(data.paper.coverage) : '—'} />
       </View>
-      {!current && <View style={styles.warning}><Ionicons name="warning-outline" size={19} color={color.amber} /><Text style={styles.warningText}>{data?.source === 'cache' ? '当前离线；旧报告只供查看，不展示买卖信号。' : data?.paper.data_date !== expectedCloseDate(now) ? `等待 ${expectedCloseDate(now)} 的行情；模拟买卖暂停。` : data?.paper.reason || '报告过期或行情不足；模拟买卖暂停。'}</Text></View>}
+      {!current && data && <View style={styles.warning}><Ionicons name="warning-outline" size={19} color={color.amber} /><Text style={styles.warningText}>{paperPauseMessage(data, now)}</Text></View>}
 
       <Text style={styles.sectionTitle}>更新方式</Text>
       <Text style={styles.copy}>网页数据由 GitHub Actions 每日尝试重建。快照生成时间变新，不代表上游提供了新收盘价；请以典型行情日期为准。App 打开后联网加载，下拉或点刷新按钮可以手动更新；留在前台或重新回到前台超过 15 分钟时会再次检查。iOS 后台不保证持续运行，源数据更新失败时也不会产生新行情。</Text>
