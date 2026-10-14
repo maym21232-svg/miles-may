@@ -4,18 +4,18 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FinancialReport } from '../../components/FinancialReport';
 import { PriceHistory } from '../../components/PriceHistory';
-import { isShortBoardCurrent, money, percent, sectorName, SITE } from '../../lib/data';
+import { currentShortCandidates, money, percent, sectorName, SITE } from '../../lib/data';
 import { useResearch } from '../../lib/ResearchContext';
 import { color } from '../../lib/theme';
 
 export default function CompanyScreen() {
   const { symbol } = useLocalSearchParams<{ symbol: string }>();
   const insets = useSafeAreaInsets();
-  const { data, watchlist, toggleWatchlist, universe } = useResearch();
+  const { data, now, watchlist, toggleWatchlist, universe } = useResearch();
   const code = (symbol ?? '').toUpperCase();
   const long = data?.board.long.find((item) => item.symbol === code);
   const short = data?.board.short.find((item) => item.symbol === code);
-  const shortCurrent = !!data && isShortBoardCurrent(data);
+  const shortCurrent = !!data && currentShortCandidates(data, now).some((item) => item.symbol === code);
   const catalogHit = universe.find((item) => item.symbol === code);
   const company = long ?? short ?? (catalogHit ? { symbol: code, name: catalogHit.name ?? code, sector: catalogHit.sector ?? '' } : undefined);
   const watched = watchlist.includes(code);

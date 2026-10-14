@@ -19,10 +19,10 @@ export function CandidateRow({ candidate, short = false, onRemove }: { candidate
           <Text style={styles.symbol}>{candidate.symbol}</Text>
           <Text style={styles.name} numberOfLines={1}>{candidate.name}</Text>
           <Text style={styles.metric} numberOfLines={1}>
-            {typeof candidate.piotroski_f === 'number'
-              ? `F分 ${candidate.piotroski_f}  ·  ROE ${percent(candidate.return_on_equity)}`
-              : short && typeof candidate.return_20d === 'number'
-                ? `20日 ${percent(candidate.return_20d)}  ·  60日 ${percent(candidate.return_60d)}`
+            {short && typeof candidate.return_20d === 'number'
+              ? `20日 ${percent(candidate.return_20d)}  ·  60日 ${percent(candidate.return_60d)}`
+              : typeof candidate.piotroski_f === 'number'
+                ? `F分 ${candidate.piotroski_f}  ·  ROE ${percent(candidate.return_on_equity)}`
                 : sectorName(candidate.sector) || '暂无候选指标'}
           </Text>
         </View>
