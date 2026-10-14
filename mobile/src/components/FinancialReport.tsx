@@ -47,11 +47,13 @@ export function FinancialReport({ symbol }: { symbol: string }) {
 
   useEffect(() => {
     let active = true;
+    let hadCache = false;
     AsyncStorage.getItem(cacheKey)
       .then((saved) => {
         if (!saved) return;
         const parsed: unknown = JSON.parse(saved);
         if (active && isCompanyDetail(parsed, symbol)) {
+          hadCache = true;
           setDetail(parsed);
           setCached(true);
         }
@@ -60,10 +62,14 @@ export function FinancialReport({ symbol }: { symbol: string }) {
       .then(() => loadCompanyDetail(symbol))
       .then((result) => {
         if (!active) return;
+        if (!result) {
+          if (hadCache) setError('本次源数据为空，继续显示本机保存的历史财报。');
+          return;
+        }
         setDetail(result);
         setCached(false);
         setError(null);
-        if (result) void AsyncStorage.setItem(cacheKey, JSON.stringify(result)).catch(() => undefined);
+        void AsyncStorage.setItem(cacheKey, JSON.stringify(result)).catch(() => undefined);
       })
       .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : '财报获取失败'); })
       .finally(() => { if (active) setLoading(false); });
@@ -74,10 +80,15 @@ export function FinancialReport({ symbol }: { symbol: string }) {
     setLoading(true);
     try {
       const result = await loadCompanyDetail(symbol);
+      if (!result) {
+        setError(detail ? '本次源数据为空，继续显示本机保存的历史财报。' : null);
+        if (detail) setCached(true);
+        return;
+      }
       setDetail(result);
       setCached(false);
       setError(null);
-      if (result) void AsyncStorage.setItem(cacheKey, JSON.stringify(result)).catch(() => undefined);
+      void AsyncStorage.setItem(cacheKey, JSON.stringify(result)).catch(() => undefined);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '财报获取失败');
     } finally {

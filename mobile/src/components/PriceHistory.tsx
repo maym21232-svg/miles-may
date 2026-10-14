@@ -22,19 +22,28 @@ export function PriceHistory({ symbol }: { symbol: string }) {
 
   useEffect(() => {
     let active = true;
+    let hadCache = false;
     AsyncStorage.getItem(cacheKey)
       .then((saved) => {
         if (!saved) return;
         const parsed: unknown = JSON.parse(saved);
         if (active && Array.isArray(parsed)) {
-          setBars(parsed.filter((row): row is PriceBar => !!row && typeof row.date === 'string' && typeof row.close === 'number' && row.close > 0));
-          setCached(true);
+          const savedBars = parsed.filter((row): row is PriceBar => !!row && typeof row.date === 'string' && typeof row.close === 'number' && Number.isFinite(row.close) && row.close > 0);
+          if (savedBars.length) {
+            hadCache = true;
+            setBars(savedBars);
+            setCached(true);
+          }
         }
       })
       .catch(() => undefined)
       .then(() => loadPriceHistory(symbol))
       .then((result) => {
         if (!active) return;
+        if (!result.length && hadCache) {
+          setError('本次源数据为空，继续显示本机保存的历史走势。');
+          return;
+        }
         setBars(result);
         setCached(false);
         setError(null);
@@ -49,6 +58,11 @@ export function PriceHistory({ symbol }: { symbol: string }) {
     setLoading(true);
     try {
       const result = await loadPriceHistory(symbol);
+      if (!result.length && bars.length) {
+        setError('本次源数据为空，继续显示本机保存的历史走势。');
+        setCached(true);
+        return;
+      }
       setBars(result);
       setCached(false);
       setError(null);

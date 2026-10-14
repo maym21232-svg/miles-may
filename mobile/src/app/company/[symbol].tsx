@@ -45,8 +45,8 @@ export default function CompanyScreen() {
       <Text style={styles.title}>{long ? '基本面概览' : short ? '走势概览' : '公司概览'}</Text>
       <View style={styles.metrics}>{rows.map(([label, value]) => <View style={styles.row} key={label}><Text style={styles.label}>{label}</Text><Text style={styles.value}>{value}</Text></View>)}</View>
       <Pressable accessibilityRole="link" style={styles.secLink} onPress={() => void Linking.openURL(`https://www.sec.gov/edgar/browse/?CIK=${encodeURIComponent(code)}&owner=exclude`)}><Text style={styles.secLinkText}>在 SEC 查找原始申报</Text><Ionicons name="open-outline" size={17} color={color.green} /></Pressable>
-      <PriceHistory symbol={code} />
-      <FinancialReport symbol={code} />
+      <PriceHistory key={code} symbol={code} />
+      <FinancialReport key={code} symbol={code} />
       <Pressable accessibilityRole="link" style={styles.open} onPress={() => void Linking.openURL(`${SITE}#/company/${encodeURIComponent(code)}`)}><Text style={styles.openText}>查看完整财报与背调</Text><Ionicons name="open-outline" size={19} color={color.white} /></Pressable>
       <Text style={styles.footnote}>完整报告在网页版打开，包含数据来源与更详细的研究材料。</Text>
     </ScrollView>
