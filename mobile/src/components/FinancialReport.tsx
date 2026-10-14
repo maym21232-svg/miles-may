@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { loadCompanyDetail, money, percent } from '../lib/data';
+import { loadCompanyDetail, money, percent, sectorName } from '../lib/data';
 import { color } from '../lib/theme';
 import type { CompanyDetail, FinancialPeriod } from '../lib/types';
 
@@ -89,10 +89,20 @@ export function FinancialReport({ symbol }: { symbol: string }) {
   const computedAt = latest?.computed_at ? new Date(latest.computed_at * 1000) : null;
   return (
     <View>
-      <View style={styles.heading}><Text style={styles.title}>财报分析</Text>{loading && <ActivityIndicator color={color.green} />}</View>
+      <View style={styles.heading}><Text style={styles.title}>公司资料与财报</Text>{loading && <ActivityIndicator color={color.green} />}</View>
       {cached && <Text style={styles.notice}>当前显示本机保存的财报，请核对报告日期。</Text>}
       {error && <View style={styles.errorRow}><Text style={styles.error}>{error}</Text><Pressable accessibilityRole="button" onPress={() => void retry()}><Text style={styles.retry}>重试</Text></Pressable></View>}
       {!detail && !loading && <Text style={styles.empty}>暂无可用的公司财报，完整资料可在网页版查看。</Text>}
+      {detail?.profile && <>
+        <Text style={styles.subtitle}>公司档案</Text>
+        <View style={styles.metrics}>
+          <Metric label="行业" value={detail.profile.industry || sectorName(detail.profile.sector || '') || '—'} />
+          <Metric label="上市交易所" value={detail.profile.exchange || '—'} />
+          <Metric label="国家/地区" value={detail.profile.country || '—'} />
+          <Metric label="计价货币" value={detail.profile.currency || '—'} />
+        </View>
+        <Text style={styles.caveat}>档案来自研究快照，可能与最新公司申报不同。</Text>
+      </>}
       {latest && <>
         <Text style={styles.periodTitle}>最近财报期 · {latest.period}</Text>
         <View style={styles.metrics}>
@@ -120,7 +130,7 @@ const styles = StyleSheet.create({
   metrics: { backgroundColor: color.white, borderWidth: 1, borderColor: color.line, borderRadius: 16, paddingHorizontal: 16 },
   metric: { minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.line },
   label: { color: color.muted, fontSize: 14 },
-  value: { color: color.ink, fontSize: 15, fontWeight: '700', textAlign: 'right' },
+  value: { color: color.ink, fontSize: 15, fontWeight: '700', textAlign: 'right', flexShrink: 1 },
   subtitle: { color: color.ink, fontSize: 18, fontWeight: '700', marginTop: 22, marginBottom: 10 },
   history: { backgroundColor: color.white, borderWidth: 1, borderColor: color.line, borderRadius: 16, paddingHorizontal: 16 },
   period: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.line, paddingVertical: 11 },

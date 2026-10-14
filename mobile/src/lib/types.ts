@@ -88,7 +88,7 @@ export type FinancialPeriod = {
 };
 
 export type CompanyDetail = {
-  profile: SearchHit & { industry?: string | null; exchange?: string | null };
+  profile: SearchHit & { industry?: string | null; exchange?: string | null; currency?: string | null };
   periods: FinancialPeriod[];
 };
 

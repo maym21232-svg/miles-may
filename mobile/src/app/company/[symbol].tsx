@@ -44,6 +44,7 @@ export default function CompanyScreen() {
       {short && !shortCurrent && <Text style={styles.stale}>短线行情未通过最新日期校验；下方涨跌幅仅为历史参考。</Text>}
       <Text style={styles.title}>{long ? '基本面概览' : short ? '走势概览' : '公司概览'}</Text>
       <View style={styles.metrics}>{rows.map(([label, value]) => <View style={styles.row} key={label}><Text style={styles.label}>{label}</Text><Text style={styles.value}>{value}</Text></View>)}</View>
+      <Pressable accessibilityRole="link" style={styles.secLink} onPress={() => void Linking.openURL(`https://www.sec.gov/edgar/browse/?CIK=${encodeURIComponent(code)}&owner=exclude`)}><Text style={styles.secLinkText}>在 SEC 查找原始申报</Text><Ionicons name="open-outline" size={17} color={color.green} /></Pressable>
       <PriceHistory symbol={code} />
       <FinancialReport symbol={code} />
       <Pressable accessibilityRole="link" style={styles.open} onPress={() => void Linking.openURL(`${SITE}#/company/${encodeURIComponent(code)}`)}><Text style={styles.openText}>查看完整财报与背调</Text><Ionicons name="open-outline" size={19} color={color.white} /></Pressable>
@@ -68,6 +69,8 @@ const styles = StyleSheet.create({
   row: { minHeight: 53, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.line },
   label: { color: color.muted, fontSize: 14 },
   value: { color: color.ink, fontSize: 15, fontWeight: '700', flexShrink: 1, textAlign: 'right' },
+  secLink: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 12, marginTop: 7 },
+  secLinkText: { color: color.green, fontSize: 14, fontWeight: '700' },
   open: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, backgroundColor: color.green, borderRadius: 14, minHeight: 51, marginTop: 24 },
   openText: { color: color.white, fontSize: 15, fontWeight: '700' },
   footnote: { textAlign: 'center', color: color.muted, fontSize: 12, lineHeight: 18, marginTop: 12 },
