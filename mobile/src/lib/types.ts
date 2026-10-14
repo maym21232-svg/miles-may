@@ -23,6 +23,18 @@ export type PaperOrder = {
   symbol: string;
   side?: string;
   reason?: string;
+  name?: string | null;
+  decision_date?: string;
+  reference_close?: number;
+};
+
+export type PaperPosition = {
+  symbol: string;
+  name?: string | null;
+  shares: number;
+  entry_price: number;
+  entry_date: string;
+  mark_price?: number | null;
 };
 
 export type PaperPortfolio = {
@@ -33,7 +45,7 @@ export type PaperPortfolio = {
   expected_date: string;
   coverage: number;
   cash: number;
-  positions: PaperOrder[];
+  positions: PaperPosition[];
   pending: PaperOrder[];
   method: string;
 };
@@ -68,4 +80,10 @@ export type FinancialPeriod = {
 export type CompanyDetail = {
   profile: SearchHit & { industry?: string | null; exchange?: string | null };
   periods: FinancialPeriod[];
+};
+
+export type PriceBar = {
+  date: string;
+  close: number;
+  source: string | null;
 };

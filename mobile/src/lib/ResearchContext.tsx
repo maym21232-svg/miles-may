@@ -39,49 +39,75 @@ export function ResearchProvider({ children }: { children: React.ReactNode }) {
   const [universe, setUniverse] = useState<SearchHit[]>([]);
   const [watchlistReady, setWatchlistReady] = useState(false);
   const lastRefreshAttempt = useRef(0);
+  const lastUniverseAttempt = useRef(0);
+  const researchRequest = useRef(0);
+  const universeRequest = useRef(0);
 
   const refresh = useCallback(async () => {
+    const request = ++researchRequest.current;
     lastRefreshAttempt.current = Date.now();
+    if (Date.now() - lastUniverseAttempt.current >= 24 * 60 * 60_000) {
+      lastUniverseAttempt.current = Date.now();
+      const catalogRequest = ++universeRequest.current;
+      void loadUniverse()
+        .then((rows) => {
+          if (catalogRequest !== universeRequest.current) return;
+          setUniverse(rows);
+          void AsyncStorage.setItem(UNIVERSE_KEY, JSON.stringify(rows)).catch(() => undefined);
+        })
+        .catch(() => { if (catalogRequest === universeRequest.current) lastUniverseAttempt.current = 0; });
+    }
     setLoading(true);
     try {
       const result = await loadResearch();
+      if (request !== researchRequest.current) return;
       setData(result);
       void AsyncStorage.setItem(DATA_KEY, JSON.stringify(result)).catch(() => undefined);
       setError(null);
     } catch (cause) {
+      if (request !== researchRequest.current) return;
       setData((current) => current ? { ...current, source: 'cache' } : null);
       setError(cause instanceof Error ? cause.message : '暂时无法连接数据源');
     } finally {
-      setLoading(false);
+      if (request === researchRequest.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    const request = ++researchRequest.current;
     lastRefreshAttempt.current = Date.now();
+    const catalogRequest = ++universeRequest.current;
+    lastUniverseAttempt.current = Date.now();
     AsyncStorage.getItem(DATA_KEY)
-      .then((saved) => { const cached = cachedResearch(saved); if (cached) setData(cached); })
+      .then((saved) => { const cached = cachedResearch(saved); if (cached && request === researchRequest.current) setData(cached); })
       .catch(() => undefined)
       .then(() => loadResearch())
       .then((result) => {
+        if (request !== researchRequest.current) return;
         setData(result);
         setError(null);
         void AsyncStorage.setItem(DATA_KEY, JSON.stringify(result)).catch(() => undefined);
       })
       .catch((cause) => {
+        if (request !== researchRequest.current) return;
         setData((current) => current ? { ...current, source: 'cache' } : null);
         setError(cause instanceof Error ? cause.message : '暂时无法连接数据源');
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (request === researchRequest.current) setLoading(false); });
     AsyncStorage.getItem(UNIVERSE_KEY)
       .then((saved) => {
         if (!saved) return;
         const parsed: unknown = JSON.parse(saved);
-        if (Array.isArray(parsed)) setUniverse(parsed.filter((row): row is SearchHit => !!row && typeof row.symbol === 'string'));
+        if (catalogRequest === universeRequest.current && Array.isArray(parsed)) setUniverse(parsed.filter((row): row is SearchHit => !!row && typeof row.symbol === 'string'));
       })
       .catch(() => undefined)
       .then(() => loadUniverse())
-      .then((rows) => { setUniverse(rows); void AsyncStorage.setItem(UNIVERSE_KEY, JSON.stringify(rows)).catch(() => undefined); })
-      .catch(() => undefined);
+      .then((rows) => {
+        if (catalogRequest !== universeRequest.current) return;
+        setUniverse(rows);
+        void AsyncStorage.setItem(UNIVERSE_KEY, JSON.stringify(rows)).catch(() => undefined);
+      })
+      .catch(() => { if (catalogRequest === universeRequest.current) lastUniverseAttempt.current = 0; });
     AsyncStorage.getItem(WATCHLIST_KEY)
       .then((saved) => {
         if (saved) {

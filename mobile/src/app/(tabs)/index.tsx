@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CandidateRow } from '../../components/CandidateRow';
-import { isPaperCurrent, sectorName } from '../../lib/data';
+import { expectedCloseDate, isPaperCurrent, isShortBoardCurrent, money, sectorName } from '../../lib/data';
 import { useResearch } from '../../lib/ResearchContext';
 import { color } from '../../lib/theme';
 
@@ -14,11 +14,14 @@ export default function DiscoverScreen() {
   const [horizon, setHorizon] = useState<'long' | 'short'>('long');
   const [sector, setSector] = useState<string | null>(null);
   const [showMethod, setShowMethod] = useState(false);
+  const [visibleCandidates, setVisibleCandidates] = useState(30);
+  const [visibleSearch, setVisibleSearch] = useState(30);
   const paperCurrent = !!data && data.source === 'network' && isPaperCurrent(data.paper);
+  const shortCurrent = !!data && isShortBoardCurrent(data);
   const candidates = useMemo(() => {
-    const list = data?.board[horizon] ?? [];
+    const list = horizon === 'short' && !shortCurrent ? [] : data?.board[horizon] ?? [];
     return list.filter((item) => !sector || item.sector === sector);
-  }, [data, horizon, sector]);
+  }, [data, horizon, sector, shortCurrent]);
   const searchResults = useMemo(() => {
     const needle = term.trim().toLowerCase();
     if (!needle) return [];
@@ -28,7 +31,7 @@ export default function DiscoverScreen() {
         || Number(b.symbol.toLowerCase().startsWith(needle)) - Number(a.symbol.toLowerCase().startsWith(needle))
         || a.symbol.localeCompare(b.symbol));
   }, [data, term, universe]);
-  const sectors = useMemo(() => [...new Set((data?.board[horizon] ?? []).map((item) => item.sector))].sort(), [data, horizon]);
+  const sectors = useMemo(() => [...new Set(candidates.map((item) => item.sector))].sort(), [candidates]);
   const orders = paperCurrent ? data!.paper.pending : [];
   const buys = orders.filter((order) => order.side?.toLowerCase() === 'buy');
   const sells = orders.filter((order) => order.side?.toLowerCase() === 'sell');
@@ -49,15 +52,15 @@ export default function DiscoverScreen() {
       {!data && loading && <ActivityIndicator color={color.green} style={{ marginTop: 35 }} />}
       {term.trim() ? <>
         <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>搜索结果</Text><Text style={styles.count}>{searchResults.length} 家</Text></View>
-        {searchResults.slice(0, 30).map((item) => <CandidateRow key={item.symbol} candidate={{ symbol: item.symbol, name: item.name ?? item.symbol, sector: item.sector ?? '' }} />)}
-        {searchResults.length > 30 && <Text style={styles.footerNote}>显示前 30 家，请输入更完整的名称或代码。</Text>}
+        {searchResults.slice(0, visibleSearch).map((item) => <CandidateRow key={item.symbol} candidate={{ symbol: item.symbol, name: item.name ?? item.symbol, sector: item.sector ?? '' }} />)}
+        {searchResults.length > visibleSearch && <Pressable accessibilityRole="button" style={styles.more} onPress={() => setVisibleSearch((count) => count + 30)}><Text style={styles.moreText}>加载更多</Text><Ionicons name="chevron-down" size={17} color={color.green} /></Pressable>}
         {!searchResults.length && <Text style={styles.empty}>{loading ? '正在加载公司目录' : '没有匹配的公司'}</Text>}
       </> : data && <>
         <View style={styles.stats}>
           <View style={styles.stat}><Text style={styles.statLabel}>长线候选</Text><Text style={styles.statValue}>{data.board.long.length} 家</Text></View>
           <View style={[styles.stat, styles.statAmber]}><Text style={styles.statLabel}>每日模拟决策</Text><Text style={[styles.statValue, { color: paperCurrent ? color.green : color.amber }]}>{paperCurrent ? '已更新' : '已暂停'}</Text></View>
         </View>
-        {!paperCurrent && <View style={styles.warning}><Ionicons name="warning-outline" size={20} color={color.amber} /><Text style={styles.warningText}>{data.source === 'cache' ? '当前离线，显示上次保存的数据；模拟买卖暂停。' : data.paper.reason || '行情日期不足或报告过期，模拟买卖暂停。'}</Text></View>}
+        {!paperCurrent && <View style={styles.warning}><Ionicons name="warning-outline" size={20} color={color.amber} /><Text style={styles.warningText}>{data.source === 'cache' ? '当前离线，显示上次保存的数据；模拟买卖暂停。' : data.paper.data_date !== expectedCloseDate() ? `等待 ${expectedCloseDate()} 的行情（目前 ${data.paper.data_date || '未知'}），模拟买卖暂停。` : data.paper.reason || '行情日期不足或报告过期，模拟买卖暂停。'}</Text></View>}
 
         <View style={[styles.signal, { backgroundColor: color.mint }]}>
           <View style={[styles.signalIcon, { backgroundColor: color.green }]}><Ionicons name="arrow-up" color={color.white} size={22} /></View>
@@ -76,21 +79,33 @@ export default function DiscoverScreen() {
           <Text style={styles.methodLine}>数据日期：{data.paper.data_date}　预期：{data.paper.expected_date}</Text>
           <Text style={styles.methodLine}>虚拟持仓：{data.paper.positions.length} 只　现金：${data.paper.cash.toLocaleString('en-US')}</Text>
           <Text style={styles.methodLine}>{data.paper.method}</Text>
+          {data.paper.positions.map((position) => <View key={position.symbol} style={styles.orderReason}>
+            <Text style={styles.orderTitle}>{position.symbol}{position.name ? ` · ${position.name}` : ''} · {position.shares} 股</Text>
+            <Text style={styles.methodLine}>模拟买入 {money(position.entry_price)} · {position.entry_date}{typeof position.mark_price === 'number' ? ` · 最近收盘 ${money(position.mark_price)}` : ''}</Text>
+          </View>)}
+          {orders.map((order) => <View key={`${order.side}-${order.symbol}`} style={styles.orderReason}>
+            <Text style={styles.orderTitle}>{order.side === 'buy' ? '模拟买入' : '模拟卖出'} · {order.symbol}{order.name ? ` · ${order.name}` : ''}</Text>
+            <Text style={styles.methodLine}>{order.reason || '未提供决策说明'}</Text>
+            {typeof order.reference_close === 'number' && <Text style={styles.methodLine}>参考收盘价 {money(order.reference_close)} · 决策日 {order.decision_date || data.paper.data_date}</Text>}
+          </View>)}
           <Text style={styles.disclaimer}>仅为研究与模拟记录，不构成投资建议；不会实际下单。</Text>
         </View>}
 
         <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>发现公司</Text><Text style={styles.count}>{candidates.length} 家</Text></View>
         <View style={styles.segment}>
-          {(['long', 'short'] as const).map((value) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: horizon === value }} onPress={() => { setHorizon(value); setSector(null); }} style={[styles.segmentItem, horizon === value && styles.segmentActive]}><Text style={[styles.segmentText, horizon === value && styles.segmentTextActive]}>{value === 'long' ? '偏长线' : '偏短线'}</Text></Pressable>)}
+          {(['long', 'short'] as const).map((value) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: horizon === value }} onPress={() => { setHorizon(value); setSector(null); setVisibleCandidates(30); }} style={[styles.segmentItem, horizon === value && styles.segmentActive]}><Text style={[styles.segmentText, horizon === value && styles.segmentTextActive]}>{value === 'long' ? '偏长线' : '偏短线'}</Text></Pressable>)}
         </View>
-        {horizon === 'short' && !paperCurrent && <Text style={styles.staleNote}>以下仅供历史研究，短线行情未更新，不是当前交易信号。</Text>}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectors}>
-          <Pressable onPress={() => setSector(null)} style={[styles.chip, !sector && styles.chipActive]}><Text style={[styles.chipText, !sector && styles.chipTextActive]}>全部</Text></Pressable>
-          {sectors.map((name) => <Pressable key={name} onPress={() => setSector(name)} style={[styles.chip, sector === name && styles.chipActive]}><Text style={[styles.chipText, sector === name && styles.chipTextActive]}>{sectorName(name)}</Text></Pressable>)}
-        </ScrollView>
-        {candidates.slice(0, 30).map((item) => <CandidateRow key={item.symbol} candidate={item} short={horizon === 'short'} />)}
-        {candidates.length > 30 && <Text style={styles.footerNote}>当前显示前 30 家，请用搜索或行业筛选查看更多。</Text>}
-        {!candidates.length && <Text style={styles.empty}>没有匹配的公司</Text>}
+        <Text style={styles.horizonNote}>{horizon === 'long' ? '1–3 年研究 · 财务质量与现金流符合条件，每季财报后复核。' : '2–6 周观察 · 近 20/60 日趋势符合条件，至少每周复核。'}</Text>
+        <Text style={styles.caveat}>条件筛选不是上涨概率，也不是买卖建议。</Text>
+        {horizon === 'short' && !shortCurrent && <Text style={styles.staleNote}>行情日期未通过校验，短线候选名单暂停展示。</Text>}
+        {horizon === 'short' && shortCurrent && <Text style={styles.horizonNote}>多数股票收盘价截至 {data.board.prices_typical_date}。</Text>}
+        {!!sectors.length && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectors}>
+          <Pressable onPress={() => { setSector(null); setVisibleCandidates(30); }} style={[styles.chip, !sector && styles.chipActive]}><Text style={[styles.chipText, !sector && styles.chipTextActive]}>全部</Text></Pressable>
+          {sectors.map((name) => <Pressable key={name} onPress={() => { setSector(name); setVisibleCandidates(30); }} style={[styles.chip, sector === name && styles.chipActive]}><Text style={[styles.chipText, sector === name && styles.chipTextActive]}>{sectorName(name)}</Text></Pressable>)}
+        </ScrollView>}
+        {candidates.slice(0, visibleCandidates).map((item) => <CandidateRow key={item.symbol} candidate={item} short={horizon === 'short'} />)}
+        {candidates.length > visibleCandidates && <Pressable accessibilityRole="button" style={styles.more} onPress={() => setVisibleCandidates((count) => count + 30)}><Text style={styles.moreText}>加载更多</Text><Ionicons name="chevron-down" size={17} color={color.green} /></Pressable>}
+        {!candidates.length && <Text style={styles.empty}>{horizon === 'short' && !shortCurrent ? '等待有效收盘价更新' : '没有匹配的公司'}</Text>}
         <Text style={styles.footerNote}>{data.source === 'cache' ? '离线缓存' : '联网获取'} · 最后获取 {data.fetchedAt.toLocaleString('zh-CN')}</Text>
       </>}
     </ScrollView>
@@ -123,6 +138,8 @@ const styles = StyleSheet.create({
   methodLabel: { flex: 1, color: color.ink, fontSize: 15, fontWeight: '600' },
   methodBody: { padding: 14, backgroundColor: color.white, borderRadius: 14, marginTop: 5 },
   methodLine: { color: color.muted, fontSize: 13, lineHeight: 22 },
+  orderReason: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: color.line, marginTop: 12, paddingTop: 11 },
+  orderTitle: { color: color.ink, fontSize: 14, fontWeight: '700', marginBottom: 3 },
   disclaimer: { color: color.amber, fontSize: 12, lineHeight: 18, marginTop: 7 },
   sectionHeader: { flexDirection: 'row', alignItems: 'baseline', gap: 9, marginTop: 29, marginBottom: 14 },
   sectionTitle: { color: color.ink, fontSize: 25, fontWeight: '800' },
@@ -133,11 +150,15 @@ const styles = StyleSheet.create({
   segmentText: { color: color.muted, fontSize: 15, fontWeight: '700' },
   segmentTextActive: { color: color.white },
   staleNote: { color: color.amber, fontSize: 13, lineHeight: 19, marginBottom: 10 },
+  horizonNote: { color: color.muted, fontSize: 13, lineHeight: 19, marginBottom: 7 },
+  caveat: { color: color.amber, fontSize: 12, lineHeight: 18, marginBottom: 12 },
   sectors: { gap: 7, paddingBottom: 13 },
   chip: { paddingHorizontal: 14, height: 34, borderRadius: 17, backgroundColor: color.white, borderWidth: 1, borderColor: color.line, justifyContent: 'center' },
   chipActive: { backgroundColor: color.ink },
   chipText: { color: color.muted, fontSize: 13 },
   chipTextActive: { color: color.white },
   empty: { textAlign: 'center', color: color.muted, paddingVertical: 32 },
+  more: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: color.white, borderWidth: 1, borderColor: color.line, borderRadius: 13, marginTop: 5 },
+  moreText: { color: color.green, fontSize: 14, fontWeight: '700' },
   footerNote: { textAlign: 'center', color: color.muted, fontSize: 12, lineHeight: 18, paddingVertical: 17 },
 });

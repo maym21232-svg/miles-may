@@ -3,7 +3,8 @@ import { useLocalSearchParams } from 'expo-router';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FinancialReport } from '../../components/FinancialReport';
-import { money, percent, sectorName, SITE } from '../../lib/data';
+import { PriceHistory } from '../../components/PriceHistory';
+import { isShortBoardCurrent, money, percent, sectorName, SITE } from '../../lib/data';
 import { useResearch } from '../../lib/ResearchContext';
 import { color } from '../../lib/theme';
 
@@ -14,6 +15,7 @@ export default function CompanyScreen() {
   const code = (symbol ?? '').toUpperCase();
   const long = data?.board.long.find((item) => item.symbol === code);
   const short = data?.board.short.find((item) => item.symbol === code);
+  const shortCurrent = !!data && isShortBoardCurrent(data);
   const catalogHit = universe.find((item) => item.symbol === code);
   const company = long ?? short ?? (catalogHit ? { symbol: code, name: catalogHit.name ?? code, sector: catalogHit.sector ?? '' } : undefined);
   const watched = watchlist.includes(code);
@@ -39,9 +41,11 @@ export default function CompanyScreen() {
       <View style={styles.heading}><View style={{ flex: 1 }}><Text style={styles.symbol}>{code}</Text><Text style={styles.name}>{company?.name ?? '暂未收录'}</Text></View><Pressable accessibilityRole="button" accessibilityLabel={watched ? '移出自选' : '加入自选'} onPress={() => toggleWatchlist(code)} style={styles.star}><Ionicons name={watched ? 'star' : 'star-outline'} size={25} color={color.green} /></Pressable></View>
       <Text style={styles.sector}>{sectorName(company?.sector ?? '') || '—'}</Text>
       <View style={styles.notice}><Ionicons name="information-circle-outline" size={19} color={color.amber} /><Text style={styles.noticeText}>这里展示历史公开数据，不是实时行情，也不是买卖建议。请核对财报期与价格日期。</Text></View>
+      {short && !shortCurrent && <Text style={styles.stale}>短线行情未通过最新日期校验；下方涨跌幅仅为历史参考。</Text>}
       <Text style={styles.title}>{long ? '基本面概览' : short ? '走势概览' : '公司概览'}</Text>
       <View style={styles.metrics}>{rows.map(([label, value]) => <View style={styles.row} key={label}><Text style={styles.label}>{label}</Text><Text style={styles.value}>{value}</Text></View>)}</View>
-      <FinancialReport key={code} symbol={code} />
+      <PriceHistory symbol={code} />
+      <FinancialReport symbol={code} />
       <Pressable accessibilityRole="link" style={styles.open} onPress={() => void Linking.openURL(`${SITE}#/company/${encodeURIComponent(code)}`)}><Text style={styles.openText}>查看完整财报与背调</Text><Ionicons name="open-outline" size={19} color={color.white} /></Pressable>
       <Text style={styles.footnote}>完整报告在网页版打开，包含数据来源与更详细的研究材料。</Text>
     </ScrollView>
@@ -58,6 +62,7 @@ const styles = StyleSheet.create({
   sector: { alignSelf: 'flex-start', color: color.green, fontSize: 13, backgroundColor: color.mint, borderRadius: 13, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 6, marginTop: 15 },
   notice: { flexDirection: 'row', gap: 9, backgroundColor: color.cream, borderRadius: 14, padding: 14, marginTop: 20 },
   noticeText: { flex: 1, color: color.amber, fontSize: 13, lineHeight: 20 },
+  stale: { color: color.amber, fontSize: 13, lineHeight: 19, marginTop: 13 },
   title: { color: color.ink, fontSize: 23, fontWeight: '800', marginTop: 30, marginBottom: 15 },
   metrics: { backgroundColor: color.white, borderWidth: 1, borderColor: color.line, borderRadius: 16, paddingHorizontal: 16 },
   row: { minHeight: 53, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.line },

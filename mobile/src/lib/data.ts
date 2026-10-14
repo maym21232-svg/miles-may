@@ -1,4 +1,4 @@
-import type { CompanyDetail, HorizonBoard, PaperPortfolio, ResearchData, SearchHit } from './types';
+import type { CompanyDetail, HorizonBoard, PaperPortfolio, PriceBar, ResearchData, SearchHit } from './types';
 
 export const SITE = 'https://maym21232-svg.github.io/miles-may/';
 
@@ -20,12 +20,26 @@ export function sectorName(sector: string): string {
   return sectors[sector] ?? sector;
 }
 
+export async function fetchJson<T>(url: string, timeoutMs = 20_000): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`数据请求失败 (${response.status})`);
+    return await response.json() as T;
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('连接超时，请检查网络后重试');
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function readJson<T>(filename: string): Promise<T> {
-  const response = await fetch(`${SITE}data/${filename}?t=${Date.now()}`, {
-    headers: { Accept: 'application/json' },
-  });
-  if (!response.ok) throw new Error(`数据请求失败 (${response.status})`);
-  return response.json() as Promise<T>;
+  return fetchJson<T>(`${SITE}data/${filename}?t=${Date.now()}`);
 }
 
 export async function loadResearch(): Promise<ResearchData> {
@@ -42,10 +56,11 @@ export async function loadResearch(): Promise<ResearchData> {
 export async function loadUniverse(): Promise<SearchHit[]> {
   const rows = await readJson<SearchHit[]>('overview.json');
   if (!Array.isArray(rows)) throw new Error('公司目录格式有误');
-  return rows.filter((row) => typeof row.symbol === 'string');
+  return rows.filter((row) => !!row && typeof row.symbol === 'string');
 }
 
 const shards = new Map<string, Promise<Record<string, CompanyDetail>>>();
+const priceShards = new Map<string, Promise<Record<string, [string, number, string | null][]>>>();
 
 function shardNumber(symbol: string, count: number): number {
   let value = 0;
@@ -63,11 +78,7 @@ export async function loadCompanyDetail(symbol: string): Promise<CompanyDetail |
   let request = shards.get(key);
   if (!request) {
     const name = `companies-${String(number).padStart(3, '0')}.json`;
-    request = fetch(`${SITE}data/${name}?v=${manifest.generated_at}`)
-      .then((response) => {
-        if (!response.ok) throw new Error(`财报请求失败 (${response.status})`);
-        return response.json() as Promise<Record<string, CompanyDetail>>;
-      })
+    request = fetchJson<Record<string, CompanyDetail>>(`${SITE}data/${name}?v=${manifest.generated_at}`)
       .catch((error) => { shards.delete(key); throw error; });
     shards.set(key, request);
     if (shards.size > 12) {
@@ -80,13 +91,48 @@ export async function loadCompanyDetail(symbol: string): Promise<CompanyDetail |
   return detail && Array.isArray(detail.periods) ? detail : null;
 }
 
-export function isPaperCurrent(paper: PaperPortfolio): boolean {
-  const age = Date.now() - Date.parse(paper.generated_at);
+export async function loadPriceHistory(symbol: string): Promise<PriceBar[]> {
+  const manifest = await readJson<{ mobile_shards?: number; generated_at: number }>('manifest.json');
+  if (!Number.isInteger(manifest.mobile_shards) || !manifest.mobile_shards || manifest.mobile_shards > 1024) return [];
+  const number = shardNumber(symbol, manifest.mobile_shards);
+  const key = `${manifest.generated_at}-${number}`;
+  let request = priceShards.get(key);
+  if (!request) {
+    const name = `prices-${String(number).padStart(3, '0')}.json`;
+    request = fetchJson<Record<string, [string, number, string | null][]>>(`${SITE}data/${name}?v=${manifest.generated_at}`)
+      .catch((error) => { priceShards.delete(key); throw error; });
+    priceShards.set(key, request);
+    if (priceShards.size > 12) {
+      const oldest = priceShards.keys().next().value;
+      if (oldest) priceShards.delete(oldest);
+    }
+  }
+  const rows = (await request)[symbol];
+  if (!Array.isArray(rows)) return [];
+  return rows.filter((row) => Array.isArray(row) && typeof row[0] === 'string' && Number.isFinite(row[1]) && row[1] > 0)
+    .map(([date, close, source]) => ({ date, close, source: source ?? null }));
+}
+
+export function expectedCloseDate(now = new Date()): string {
+  const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+  while (day.getUTCDay() === 0 || day.getUTCDay() === 6) day.setUTCDate(day.getUTCDate() - 1);
+  return day.toISOString().slice(0, 10);
+}
+
+export function isPaperCurrent(paper: PaperPortfolio, now = new Date()): boolean {
+  const age = now.getTime() - Date.parse(paper.generated_at);
   return paper.status === 'ready'
-    && paper.data_date >= paper.expected_date
+    && paper.data_date === paper.expected_date
+    && paper.data_date === expectedCloseDate(now)
     && Number.isFinite(age)
     && age >= -5 * 60_000
     && age < 36 * 60 * 60_000;
+}
+
+export function isShortBoardCurrent(data: ResearchData): boolean {
+  return data.source === 'network'
+    && isPaperCurrent(data.paper)
+    && data.board.prices_typical_date === data.paper.data_date;
 }
 
 export function percent(value?: number): string {
