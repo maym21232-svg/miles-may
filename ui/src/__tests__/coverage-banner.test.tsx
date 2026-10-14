@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CoverageBanner } from "../components/CoverageBanner";
+import { CoverageBanner, broadPriceStale } from "../components/CoverageBanner";
 
 const first = {
   schema: 2, generated_at: 1791695737, universe_rows: 6407,
@@ -44,18 +44,25 @@ describe("CoverageBanner", () => {
     expect(await screen.findByText(/多数个股收盘截至 2026-09-11/)).toHaveTextContent("个别最新 2026-10-12");
   });
 
-  it("warns when most prices are older than two weeks", async () => {
+  it("warns when most prices lag the expected close", async () => {
     manifestMock.mockResolvedValue({
       ...updated,
       prices: { ...updated.prices, symbols: 6353, typical_date: "2020-09-11", typical_symbols: 6227 },
     });
     render(<CoverageBanner />);
-    expect(await screen.findByText(/多数价格已超过 14 天/)).toHaveTextContent("勿当作当前行情");
+    expect(await screen.findByText(/多数价格落后预期收盘日/)).toHaveTextContent("勿当作当前行情");
     const details = screen.getByText("数据快照").closest("details")!;
     expect(details.open).toBe(false);
     expect(screen.getByText("多数行情滞后")).toBeInTheDocument();
     fireEvent.click(details.querySelector("summary")!);
     expect(details.open).toBe(true);
+  });
+
+  it("allows Friday data on Sunday but flags it after Monday close", () => {
+    const prices = { ...updated.prices!, typical_date: "2026-10-09", typical_symbols: 5100 };
+    expect(broadPriceStale(prices, new Date("2026-10-11T12:00:00Z"))).toBe(false);
+    expect(broadPriceStale(prices, new Date("2026-10-12T20:00:00Z"))).toBe(true);
+    expect(broadPriceStale({ ...prices, typical_symbols: 100 }, new Date("2026-10-12T20:00:00Z"))).toBe(false);
   });
 
   it("offers reload when prices advance without a new financial snapshot", async () => {
