@@ -61,6 +61,7 @@ describe("paper desk", () => {
       { starting_cash: 0 },
       { positions: [{ ...report.positions[0], shares: 0 }] },
       { positions: [{ ...report.positions[0], mark_price: -1 }] },
+      { positions: [{ ...report.positions[0], shares: 1e300, mark_price: 1e300 }] },
     ]) {
       const { unmount } = render(<PaperDesk report={{ ...report, ...patch }} onSelect={vi.fn()} />);
       fireEvent.click(screen.getByText("虚拟仓与决策依据"));

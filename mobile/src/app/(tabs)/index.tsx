@@ -60,7 +60,7 @@ export default function DiscoverScreen() {
         {!searchResults.length && <Text style={styles.empty}>{loading ? '正在加载公司目录' : '没有匹配的公司'}</Text>}
       </> : data && <>
         <View style={styles.stats}>
-          <View style={styles.stat}><Text style={styles.statLabel}>长线候选</Text><Text style={styles.statValue}>{data.board.long.length} 家</Text></View>
+          <View style={styles.stat}><Text style={styles.statLabel}>覆盖公司</Text><Text style={styles.statValue}>{universe.length ? `${universe.length.toLocaleString('zh-CN')} 家` : '—'}</Text></View>
           <View style={[styles.stat, styles.statAmber]}><Text style={styles.statLabel}>每日模拟决策</Text><Text style={[styles.statValue, { color: paperCurrent ? color.green : color.amber }]}>{paperCurrent ? '已更新' : '已暂停'}</Text></View>
         </View>
         {!paperCurrent && <View style={styles.warning}><Ionicons name="warning-outline" size={20} color={color.amber} /><Text style={styles.warningText}>{paperPauseMessage(data, now)}</Text></View>}

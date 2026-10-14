@@ -100,6 +100,7 @@ test('does not value simulated holdings from stale or missing marks', () => {
   assert.equal(paperEquity(paper, false), null);
   assert.equal(paperEquity({ ...paper, positions: [{ symbol: 'A', shares: 2, mark_price: null }] }, true), null);
   assert.equal(paperEquity({ ...paper, cash: -1 }, true), null);
+  assert.equal(paperEquity({ ...paper, positions: [{ symbol: 'A', shares: 1e300, mark_price: 1e300 }] }, true), null);
 });
 
 test('formats invalid financial numbers as missing rather than NaN', () => {

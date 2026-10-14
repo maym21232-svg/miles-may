@@ -175,7 +175,8 @@ export function paperEquity(paper: PaperPortfolio, current: boolean): number | n
   if (paper.positions.some((position) => !Number.isFinite(position.shares) || position.shares <= 0
     || typeof position.mark_price !== 'number' || !Number.isFinite(position.mark_price)
     || position.mark_price <= 0)) return null;
-  return paper.cash + paper.positions.reduce((total, position) => total + position.shares * position.mark_price!, 0);
+  const equity = paper.cash + paper.positions.reduce((total, position) => total + position.shares * position.mark_price!, 0);
+  return Number.isFinite(equity) ? equity : null;
 }
 
 export function percent(value?: number): string {

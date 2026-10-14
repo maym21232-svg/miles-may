@@ -137,9 +137,10 @@ export function PaperDesk({ report, error = false, onSelect, onRetry, showHeadin
     Number.isFinite(report.starting_cash) && report.starting_cash > 0 &&
     report.positions.every((position) => Number.isFinite(position.shares) && position.shares > 0 &&
       position.mark_price != null && Number.isFinite(position.mark_price) && position.mark_price > 0);
-  const equity = valued && report
+  const rawEquity = valued && report
     ? report.cash + report.positions.reduce((sum, position) => sum + position.shares * position.mark_price!, 0)
     : null;
+  const equity = rawEquity != null && Number.isFinite(rawEquity) ? rawEquity : null;
   const empty = error ? "数据暂不可用" : !report ? "正在读取模拟记录…"
     : paused ? "等待有效行情" : "本轮暂无符合条件的决定";
   const warning = staleOnDevice
