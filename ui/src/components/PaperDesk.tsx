@@ -137,7 +137,7 @@ export function PaperDesk({ report, error = false, onSelect, onRetry, showHeadin
   now?: Date;
 }) {
   const paused = paperPaused(report, now);
-  const staleOnDevice = report?.status === "ready" && report.data_date !== expectedCloseDate(now);
+  const staleOnDevice = !!report && report.data_date !== expectedCloseDate(now);
   const pending = paused ? [] : report?.pending ?? [];
   const valued = !!report && !paused && Number.isFinite(report.cash) && report.cash >= 0 &&
     Number.isFinite(report.starting_cash) && report.starting_cash > 0 &&

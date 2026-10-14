@@ -44,6 +44,13 @@ describe("paper desk", () => {
     expect(screen.getByText(/模拟起始资金/)).toHaveTextContent("模拟资产暂不可估值");
   });
 
+  it("names the missing close even when the published report is already paused", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-14T12:00:00Z"));
+    render(<PaperDesk report={{ ...report, status: "paused", data_date: "2026-10-09", pending: [] }} onSelect={vi.fn()} />);
+    expect(screen.getByRole("status")).toHaveTextContent("等待 2026-10-13 的行情（目前 2026-10-09）");
+  });
+
   it("suppresses old decisions at the conservative post-close cutoff", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-10-13T20:00:00Z"));
