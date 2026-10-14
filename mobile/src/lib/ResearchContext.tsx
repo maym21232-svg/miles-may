@@ -1,9 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { loadResearch } from './data';
-import type { ResearchData } from './types';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
+import { loadResearch, loadUniverse } from './data';
+import type { ResearchData, SearchHit } from './types';
 
 const WATCHLIST_KEY = 'miles-may-watchlist-v1';
+const DATA_KEY = 'miles-may-research-v1';
+const UNIVERSE_KEY = 'miles-may-universe-v1';
+
+function cachedResearch(saved: string | null): ResearchData | null {
+  if (!saved) return null;
+  const parsed: unknown = JSON.parse(saved);
+  if (!parsed || typeof parsed !== 'object') return null;
+  const value = parsed as Partial<ResearchData>;
+  if (!Array.isArray(value.board?.long) || !Array.isArray(value.board?.short) || !Array.isArray(value.paper?.pending)) return null;
+  const fetchedAt = new Date(value.fetchedAt as unknown as string);
+  if (Number.isNaN(fetchedAt.getTime())) return null;
+  return { board: value.board, paper: value.paper, fetchedAt, source: 'cache' };
+}
 
 type ResearchContextValue = {
   data: ResearchData | null;
@@ -12,6 +26,7 @@ type ResearchContextValue = {
   refresh: () => Promise<void>;
   watchlist: string[];
   toggleWatchlist: (symbol: string) => void;
+  universe: SearchHit[];
 };
 
 const ResearchContext = createContext<ResearchContextValue | null>(null);
@@ -21,14 +36,20 @@ export function ResearchProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [watchlist, setWatchlist] = useState<string[]>([]);
+  const [universe, setUniverse] = useState<SearchHit[]>([]);
   const [watchlistReady, setWatchlistReady] = useState(false);
+  const lastRefreshAttempt = useRef(0);
 
   const refresh = useCallback(async () => {
+    lastRefreshAttempt.current = Date.now();
     setLoading(true);
     try {
-      setData(await loadResearch());
+      const result = await loadResearch();
+      setData(result);
+      void AsyncStorage.setItem(DATA_KEY, JSON.stringify(result)).catch(() => undefined);
       setError(null);
     } catch (cause) {
+      setData((current) => current ? { ...current, source: 'cache' } : null);
       setError(cause instanceof Error ? cause.message : '暂时无法连接数据源');
     } finally {
       setLoading(false);
@@ -36,10 +57,31 @@ export function ResearchProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    loadResearch()
-      .then((result) => { setData(result); setError(null); })
-      .catch((cause) => setError(cause instanceof Error ? cause.message : '暂时无法连接数据源'))
+    lastRefreshAttempt.current = Date.now();
+    AsyncStorage.getItem(DATA_KEY)
+      .then((saved) => { const cached = cachedResearch(saved); if (cached) setData(cached); })
+      .catch(() => undefined)
+      .then(() => loadResearch())
+      .then((result) => {
+        setData(result);
+        setError(null);
+        void AsyncStorage.setItem(DATA_KEY, JSON.stringify(result)).catch(() => undefined);
+      })
+      .catch((cause) => {
+        setData((current) => current ? { ...current, source: 'cache' } : null);
+        setError(cause instanceof Error ? cause.message : '暂时无法连接数据源');
+      })
       .finally(() => setLoading(false));
+    AsyncStorage.getItem(UNIVERSE_KEY)
+      .then((saved) => {
+        if (!saved) return;
+        const parsed: unknown = JSON.parse(saved);
+        if (Array.isArray(parsed)) setUniverse(parsed.filter((row): row is SearchHit => !!row && typeof row.symbol === 'string'));
+      })
+      .catch(() => undefined)
+      .then(() => loadUniverse())
+      .then((rows) => { setUniverse(rows); void AsyncStorage.setItem(UNIVERSE_KEY, JSON.stringify(rows)).catch(() => undefined); })
+      .catch(() => undefined);
     AsyncStorage.getItem(WATCHLIST_KEY)
       .then((saved) => {
         if (saved) {
@@ -52,7 +94,20 @@ export function ResearchProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (watchlistReady) void AsyncStorage.setItem(WATCHLIST_KEY, JSON.stringify(watchlist));
+    const maybeRefresh = () => {
+      if (Date.now() - lastRefreshAttempt.current >= 15 * 60_000) void refresh();
+    };
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') maybeRefresh();
+    });
+    const timer = setInterval(() => {
+      if (AppState.currentState === 'active') maybeRefresh();
+    }, 15 * 60_000);
+    return () => { subscription.remove(); clearInterval(timer); };
+  }, [refresh]);
+
+  useEffect(() => {
+    if (watchlistReady) void AsyncStorage.setItem(WATCHLIST_KEY, JSON.stringify(watchlist)).catch(() => undefined);
   }, [watchlist, watchlistReady]);
 
   const toggleWatchlist = useCallback((symbol: string) => {
@@ -61,8 +116,8 @@ export function ResearchProvider({ children }: { children: React.ReactNode }) {
       : [...current, symbol]);
   }, []);
 
-  const value = useMemo(() => ({ data, error, loading, refresh, watchlist, toggleWatchlist }),
-    [data, error, loading, refresh, watchlist, toggleWatchlist]);
+  const value = useMemo(() => ({ data, error, loading, refresh, watchlist, toggleWatchlist, universe }),
+    [data, error, loading, refresh, watchlist, toggleWatchlist, universe]);
   return <ResearchContext.Provider value={value}>{children}</ResearchContext.Provider>;
 }
 

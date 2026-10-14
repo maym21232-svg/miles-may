@@ -3,37 +3,31 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CandidateRow } from '../../components/CandidateRow';
-import { isPaperCurrent } from '../../lib/data';
+import { isPaperCurrent, sectorName } from '../../lib/data';
 import { useResearch } from '../../lib/ResearchContext';
 import { color } from '../../lib/theme';
 
-const sectorNames: Record<string, string> = {
-  'Information Technology': '信息技术',
-  'Communication Services': '通信服务',
-  'Consumer Discretionary': '可选消费',
-  'Consumer Staples': '日常消费',
-  'Financials': '金融',
-  'Health Care': '医疗健康',
-  'Industrials': '工业',
-  'Energy': '能源',
-  'Utilities': '公用事业',
-  'Materials': '原材料',
-  'Real Estate': '房地产',
-};
-
 export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
-  const { data, error, loading, refresh } = useResearch();
+  const { data, error, loading, refresh, universe } = useResearch();
   const [term, setTerm] = useState('');
   const [horizon, setHorizon] = useState<'long' | 'short'>('long');
   const [sector, setSector] = useState<string | null>(null);
   const [showMethod, setShowMethod] = useState(false);
-  const paperCurrent = !!data && isPaperCurrent(data.paper);
+  const paperCurrent = !!data && data.source === 'network' && isPaperCurrent(data.paper);
   const candidates = useMemo(() => {
     const list = data?.board[horizon] ?? [];
+    return list.filter((item) => !sector || item.sector === sector);
+  }, [data, horizon, sector]);
+  const searchResults = useMemo(() => {
     const needle = term.trim().toLowerCase();
-    return list.filter((item) => (!sector || item.sector === sector) && (!needle || `${item.symbol} ${item.name}`.toLowerCase().includes(needle)));
-  }, [data, horizon, sector, term]);
+    if (!needle) return [];
+    const rows = universe.length ? universe : [...(data?.board.long ?? []), ...(data?.board.short ?? [])];
+    return rows.filter((row) => `${row.symbol} ${row.name ?? ''}`.toLowerCase().includes(needle))
+      .sort((a, b) => Number(b.symbol.toLowerCase() === needle) - Number(a.symbol.toLowerCase() === needle)
+        || Number(b.symbol.toLowerCase().startsWith(needle)) - Number(a.symbol.toLowerCase().startsWith(needle))
+        || a.symbol.localeCompare(b.symbol));
+  }, [data, term, universe]);
   const sectors = useMemo(() => [...new Set((data?.board[horizon] ?? []).map((item) => item.sector))].sort(), [data, horizon]);
   const orders = paperCurrent ? data!.paper.pending : [];
   const buys = orders.filter((order) => order.side?.toLowerCase() === 'buy');
@@ -53,12 +47,17 @@ export default function DiscoverScreen() {
 
       {error && <Text style={styles.error}>{error}{data ? '；仍显示上次获取的数据。' : ''}</Text>}
       {!data && loading && <ActivityIndicator color={color.green} style={{ marginTop: 35 }} />}
-      {data && <>
+      {term.trim() ? <>
+        <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>搜索结果</Text><Text style={styles.count}>{searchResults.length} 家</Text></View>
+        {searchResults.slice(0, 30).map((item) => <CandidateRow key={item.symbol} candidate={{ symbol: item.symbol, name: item.name ?? item.symbol, sector: item.sector ?? '' }} />)}
+        {searchResults.length > 30 && <Text style={styles.footerNote}>显示前 30 家，请输入更完整的名称或代码。</Text>}
+        {!searchResults.length && <Text style={styles.empty}>{loading ? '正在加载公司目录' : '没有匹配的公司'}</Text>}
+      </> : data && <>
         <View style={styles.stats}>
           <View style={styles.stat}><Text style={styles.statLabel}>长线候选</Text><Text style={styles.statValue}>{data.board.long.length} 家</Text></View>
           <View style={[styles.stat, styles.statAmber]}><Text style={styles.statLabel}>每日模拟决策</Text><Text style={[styles.statValue, { color: paperCurrent ? color.green : color.amber }]}>{paperCurrent ? '已更新' : '已暂停'}</Text></View>
         </View>
-        {!paperCurrent && <View style={styles.warning}><Ionicons name="warning-outline" size={20} color={color.amber} /><Text style={styles.warningText}>{data.paper.reason || '行情日期不足，模拟买卖暂停。'}</Text></View>}
+        {!paperCurrent && <View style={styles.warning}><Ionicons name="warning-outline" size={20} color={color.amber} /><Text style={styles.warningText}>{data.source === 'cache' ? '当前离线，显示上次保存的数据；模拟买卖暂停。' : data.paper.reason || '行情日期不足或报告过期，模拟买卖暂停。'}</Text></View>}
 
         <View style={[styles.signal, { backgroundColor: color.mint }]}>
           <View style={[styles.signalIcon, { backgroundColor: color.green }]}><Ionicons name="arrow-up" color={color.white} size={22} /></View>
@@ -87,12 +86,12 @@ export default function DiscoverScreen() {
         {horizon === 'short' && !paperCurrent && <Text style={styles.staleNote}>以下仅供历史研究，短线行情未更新，不是当前交易信号。</Text>}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectors}>
           <Pressable onPress={() => setSector(null)} style={[styles.chip, !sector && styles.chipActive]}><Text style={[styles.chipText, !sector && styles.chipTextActive]}>全部</Text></Pressable>
-          {sectors.map((name) => <Pressable key={name} onPress={() => setSector(name)} style={[styles.chip, sector === name && styles.chipActive]}><Text style={[styles.chipText, sector === name && styles.chipTextActive]}>{sectorNames[name] ?? name}</Text></Pressable>)}
+          {sectors.map((name) => <Pressable key={name} onPress={() => setSector(name)} style={[styles.chip, sector === name && styles.chipActive]}><Text style={[styles.chipText, sector === name && styles.chipTextActive]}>{sectorName(name)}</Text></Pressable>)}
         </ScrollView>
         {candidates.slice(0, 30).map((item) => <CandidateRow key={item.symbol} candidate={item} short={horizon === 'short'} />)}
         {candidates.length > 30 && <Text style={styles.footerNote}>当前显示前 30 家，请用搜索或行业筛选查看更多。</Text>}
         {!candidates.length && <Text style={styles.empty}>没有匹配的公司</Text>}
-        <Text style={styles.footerNote}>数据来自公开财报与行情处理流程 · 最后获取 {data.fetchedAt.toLocaleString('zh-CN')}</Text>
+        <Text style={styles.footerNote}>{data.source === 'cache' ? '离线缓存' : '联网获取'} · 最后获取 {data.fetchedAt.toLocaleString('zh-CN')}</Text>
       </>}
     </ScrollView>
   );

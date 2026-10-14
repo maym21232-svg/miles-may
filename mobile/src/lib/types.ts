@@ -42,4 +42,30 @@ export type ResearchData = {
   board: HorizonBoard;
   paper: PaperPortfolio;
   fetchedAt: Date;
+  source: 'network' | 'cache';
+};
+
+export type SearchHit = {
+  symbol: string;
+  name: string | null;
+  country: string | null;
+  sector: string | null;
+};
+
+export type FinancialPeriod = {
+  period: string;
+  revenue?: number | null;
+  net_income?: number | null;
+  free_cash_flow?: number | null;
+  operating_cashflow?: number | null;
+  return_on_equity?: number | null;
+  revenue_growth?: number | null;
+  piotroski_f?: number | null;
+  provider?: string | null;
+  computed_at?: number | null;
+};
+
+export type CompanyDetail = {
+  profile: SearchHit & { industry?: string | null; exchange?: string | null };
+  periods: FinancialPeriod[];
 };

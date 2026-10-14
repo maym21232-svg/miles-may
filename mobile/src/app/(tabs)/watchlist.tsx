@@ -8,9 +8,14 @@ import { color } from '../../lib/theme';
 
 export default function WatchlistScreen() {
   const insets = useSafeAreaInsets();
-  const { data, watchlist } = useResearch();
+  const { data, watchlist, universe } = useResearch();
   const candidates = [...(data?.board.long ?? []), ...(data?.board.short ?? [])];
-  const saved = watchlist.map((symbol) => candidates.find((candidate) => candidate.symbol === symbol));
+  const saved = watchlist.map((symbol) => {
+    const candidate = candidates.find((item) => item.symbol === symbol);
+    if (candidate) return candidate;
+    const hit = universe.find((item) => item.symbol === symbol);
+    return hit ? { symbol, name: hit.name ?? symbol, sector: hit.sector ?? '' } : undefined;
+  });
   return (
     <ScrollView style={styles.page} contentContainerStyle={[styles.body, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}>
       <Text style={styles.title}>我的自选</Text>

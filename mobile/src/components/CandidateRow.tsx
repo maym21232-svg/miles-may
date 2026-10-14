@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { percent } from '../lib/data';
+import { percent, sectorName } from '../lib/data';
 import { color } from '../lib/theme';
 import type { Candidate } from '../lib/types';
 
@@ -18,7 +18,11 @@ export function CandidateRow({ candidate, short = false }: { candidate: Candidat
         <Text style={styles.symbol}>{candidate.symbol}</Text>
         <Text style={styles.name} numberOfLines={1}>{candidate.name}</Text>
         <Text style={styles.metric} numberOfLines={1}>
-          {short ? `20日 ${percent(candidate.return_20d)}  ·  60日 ${percent(candidate.return_60d)}` : `F分 ${candidate.piotroski_f ?? '—'}  ·  ROE ${percent(candidate.return_on_equity)}`}
+          {typeof candidate.piotroski_f === 'number'
+            ? `F分 ${candidate.piotroski_f}  ·  ROE ${percent(candidate.return_on_equity)}`
+            : short && typeof candidate.return_20d === 'number'
+              ? `20日 ${percent(candidate.return_20d)}  ·  60日 ${percent(candidate.return_60d)}`
+              : sectorName(candidate.sector) || '暂无候选指标'}
         </Text>
       </View>
       <Ionicons name="chevron-forward" size={19} color={color.muted} />

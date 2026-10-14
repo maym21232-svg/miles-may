@@ -8,7 +8,9 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.maym21232svg.milesmay",
+      "buildNumber": "1"
     },
     "experiments": {
       "typedRoutes": true
