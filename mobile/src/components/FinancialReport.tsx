@@ -128,11 +128,11 @@ export function FinancialReport({ symbol }: { symbol: string }) {
         <Text style={styles.subtitle}>财报线索</Text>
         <View style={styles.notes}>{financialNotes(latest).map((note) => <Text style={styles.note} key={note}>{note}</Text>)}</View>
         <Text style={styles.caveat}>基于快照的规则提示，不是逐项审计或投资结论；请核对原始申报的附注和管理层讨论。</Text>
-        <Text style={styles.subtitle}>历年对照</Text>
+        <Text style={styles.subtitle}>历史财报期</Text>
         <View style={styles.history}>{detail?.periods.slice(0, 3).map((period) => <PeriodRow key={period.period} period={period} />)}</View>
         <Text style={styles.source}>来源：{latest.provider || '未标明'}{computedAt && !Number.isNaN(computedAt.getTime()) ? `  ·  整理于 ${computedAt.toLocaleDateString('zh-CN')}` : ''}</Text>
         {provenance && <Pressable accessibilityRole="link" style={styles.sourceLink} onPress={() => void Linking.openURL(provenance.url)}><Text style={styles.sourceLinkText}>{provenance.label}</Text><Ionicons name="open-outline" size={16} color={color.green} /></Pressable>}
-        <Text style={styles.caveat}>增长率及 F 分为基于源数据的计算值；缺失项不填充。财报期不是最新交易日。</Text>
+        <Text style={styles.caveat}>增长率及 F 分为基于源数据的计算值；缺失项不填充。不同财报期可能采用不同报表口径，比较前请核对申报原文。</Text>
       </>}
     </View>
   );

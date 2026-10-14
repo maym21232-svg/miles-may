@@ -435,7 +435,7 @@ function DrawerSections({ symbol, detail }: { symbol: string; detail: CompanyDet
               </PeriodTable>
               {sparse.some(Boolean) && (
                 <p className="meta table-note">
-                  灰色列表示原始来源在该年度没有足够的基础数据，增长率等指标需要上一年度数据才能计算。
+                  灰色列表示原始来源在该财报期没有足够的基础数据；增长率等指标还需要可比前期数据。
                 </p>
               )}
               <h3 id="drawer-cash" tabIndex={-1}>现金流质量</h3>
@@ -508,7 +508,7 @@ function DrawerSections({ symbol, detail }: { symbol: string; detail: CompanyDet
                     ))}
                   </PeriodTable>
                   <p className="meta">
-                    汇总最近四个已披露季度，通常比上方的年度数据更新。
+                    汇总最近四个已披露季度；这是滚动口径，不宜与不同期间的单期数字直接比较。
                   </p>
                 </>
               )}
