@@ -89,7 +89,15 @@ export async function loadCompanyDetail(symbol: string): Promise<CompanyDetail |
   }
   const companies = await request;
   const detail = companies[symbol];
-  return detail && Array.isArray(detail.periods) ? detail : null;
+  return isCompanyDetail(detail, symbol) ? detail : null;
+}
+
+export function isCompanyDetail(value: unknown, symbol: string): value is CompanyDetail {
+  if (!value || typeof value !== 'object') return false;
+  const detail = value as Partial<CompanyDetail>;
+  return detail.profile?.symbol === symbol && Array.isArray(detail.periods) &&
+    detail.periods.every((period) => !!period && typeof period.period === 'string' &&
+      (period.symbol == null || period.symbol === symbol));
 }
 
 export async function loadPriceHistory(symbol: string): Promise<PriceBar[]> {

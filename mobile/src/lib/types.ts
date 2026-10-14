@@ -75,6 +75,7 @@ export type SearchHit = {
 };
 
 export type FinancialPeriod = {
+  symbol?: string;
   period: string;
   revenue?: number | null;
   net_income?: number | null;

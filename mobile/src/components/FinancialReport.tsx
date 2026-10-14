@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { loadCompanyDetail, money, percent, sectorName } from '../lib/data';
+import { isCompanyDetail, loadCompanyDetail, money, percent, sectorName } from '../lib/data';
 import { financialNotes } from '../lib/finance';
 import { color } from '../lib/theme';
 import type { CompanyDetail, FinancialPeriod } from '../lib/types';
@@ -51,8 +51,8 @@ export function FinancialReport({ symbol }: { symbol: string }) {
       .then((saved) => {
         if (!saved) return;
         const parsed: unknown = JSON.parse(saved);
-        if (active && parsed && typeof parsed === 'object' && Array.isArray((parsed as CompanyDetail).periods)) {
-          setDetail(parsed as CompanyDetail);
+        if (active && isCompanyDetail(parsed, symbol)) {
+          setDetail(parsed);
           setCached(true);
         }
       })

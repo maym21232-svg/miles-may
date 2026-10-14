@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { currentShortCandidates, expectedCloseDate, fetchJson, isPaperCurrent, isShortBoardCurrent, loadCompanyDetail, loadPriceHistory, loadUniverse, paperEquity, paperPauseMessage, sectorName } from '../src/lib/data.ts';
+import { currentShortCandidates, expectedCloseDate, fetchJson, isCompanyDetail, isPaperCurrent, isShortBoardCurrent, loadCompanyDetail, loadPriceHistory, loadUniverse, paperEquity, paperPauseMessage, sectorName } from '../src/lib/data.ts';
 import { financialNotes } from '../src/lib/finance.ts';
 
 function report(overrides = {}) {
@@ -142,6 +142,13 @@ test('loads the correct company shard and validates its contents', async () => {
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('rejects financial details that belong to another company', () => {
+  assert.equal(isCompanyDetail({ profile: { symbol: 'B' }, periods: [{ period: '2025-12-31' }] }, 'A'), false);
+  assert.equal(isCompanyDetail({ profile: { symbol: 'A' }, periods: [{ symbol: 'B', period: '2025-12-31' }] }, 'A'), false);
+  assert.equal(isCompanyDetail({ profile: { symbol: 'A' }, periods: [null] }, 'A'), false);
+  assert.equal(isCompanyDetail({ profile: { symbol: 'A' }, periods: [{ period: '2025-12-31' }] }, 'A'), true);
 });
 
 test('times out a stalled request with a retryable message', async () => {
