@@ -21,51 +21,56 @@ export async function createDuckDbRunner(
 ): Promise<QueryRunner> {
   const bundle = await duckdb.selectBundle(BUNDLES);
   const worker = new Worker(bundle.mainWorker!);
-  const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
-  await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+  try {
+    const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
+    await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
 
-  const url = (name: string) => new URL(`${base}data/${name}`, document.baseURI).href;
-  await db.registerFileURL(
-    "universe.parquet", url("universe.parquet"), duckdb.DuckDBDataProtocol.HTTP, false,
-  );
-  await db.registerFileURL(
-    "snapshot.parquet", url("snapshot.parquet"), duckdb.DuckDBDataProtocol.HTTP, false,
-  );
-  for (const shard of priceShards) {
-    await db.registerFileURL(shard, url(shard), duckdb.DuckDBDataProtocol.HTTP, false);
-  }
+    const url = (name: string) => new URL(`${base}data/${name}`, document.baseURI).href;
+    await db.registerFileURL(
+      "universe.parquet", url("universe.parquet"), duckdb.DuckDBDataProtocol.HTTP, false,
+    );
+    await db.registerFileURL(
+      "snapshot.parquet", url("snapshot.parquet"), duckdb.DuckDBDataProtocol.HTTP, false,
+    );
+    for (const shard of priceShards) {
+      await db.registerFileURL(shard, url(shard), duckdb.DuckDBDataProtocol.HTTP, false);
+    }
 
-  const conn = await db.connect();
-  await conn.query("CREATE VIEW universe AS SELECT * FROM read_parquet('universe.parquet')");
-  await conn.query("CREATE VIEW snapshot_all AS SELECT * FROM read_parquet('snapshot.parquet')");
-  await conn.query(`
+    const conn = await db.connect();
+    await conn.query("CREATE VIEW universe AS SELECT * FROM read_parquet('universe.parquet')");
+    await conn.query("CREATE VIEW snapshot_all AS SELECT * FROM read_parquet('snapshot.parquet')");
+    await conn.query(`
     CREATE VIEW snapshot_latest AS
     SELECT * EXCLUDE (_rn) FROM (
         SELECT s.*,
                row_number() OVER (PARTITION BY s.symbol ORDER BY s.period DESC) AS _rn
         FROM snapshot_all s
     ) WHERE _rn = 1
-  `);
-  // symbol-sorted, disjoint shards → DuckDB prunes non-matching ones on a
-  // footer read; only registered when the manifest lists a prices block
-  if (priceShards.length) {
-    const list = priceShards.map((s) => `'${s}'`).join(", ");
-    await conn.query(`CREATE VIEW prices AS SELECT * FROM read_parquet([${list}])`);
-  }
+    `);
+    // symbol-sorted, disjoint shards → DuckDB prunes non-matching ones on a
+    // footer read; only registered when the manifest lists a prices block
+    if (priceShards.length) {
+      const list = priceShards.map((s) => `'${s}'`).join(", ");
+      await conn.query(`CREATE VIEW prices AS SELECT * FROM read_parquet([${list}])`);
+    }
 
-  return {
-    async query(sql: string, params: unknown[] = []): Promise<Record<string, unknown>[]> {
-      if (params.length === 0) {
-        const table = await conn.query(sql);
-        return table.toArray().map((row) => row.toJSON() as Record<string, unknown>);
-      }
-      const statement = await conn.prepare(sql);
-      try {
-        const table = await statement.query(...params);
-        return table.toArray().map((row) => row.toJSON() as Record<string, unknown>);
-      } finally {
-        await statement.close();
-      }
-    },
-  };
+    return {
+      async query(sql: string, params: unknown[] = []): Promise<Record<string, unknown>[]> {
+        if (params.length === 0) {
+          const table = await conn.query(sql);
+          return table.toArray().map((row) => row.toJSON() as Record<string, unknown>);
+        }
+        const statement = await conn.prepare(sql);
+        try {
+          const table = await statement.query(...params);
+          return table.toArray().map((row) => row.toJSON() as Record<string, unknown>);
+        } finally {
+          await statement.close();
+        }
+      },
+    };
+  } catch (error) {
+    worker.terminate();
+    throw error;
+  }
 }

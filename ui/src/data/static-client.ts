@@ -61,7 +61,11 @@ export function createStaticClient(options: StaticClientOptions = {}): DataClien
   const manifest = (): Promise<SiteManifest | null> => {
     manifestPromise ??= fetchImpl(`${base}data/manifest.json`)
       .then((r) => (r.ok ? (r.json() as Promise<SiteManifest>) : null))
-      .catch(() => null);
+      .catch(() => null)
+      .then((next) => {
+        if (next === null) manifestPromise = null;
+        return next;
+      });
     return manifestPromise;
   };
 
@@ -75,7 +79,10 @@ export function createStaticClient(options: StaticClientOptions = {}): DataClien
     });
 
   const runner = (): Promise<QueryRunner> => {
-    runnerPromise ??= makeRunner();
+    runnerPromise ??= makeRunner().catch((error) => {
+      runnerPromise = null;
+      throw error;
+    });
     return runnerPromise;
   };
 
@@ -90,6 +97,9 @@ export function createStaticClient(options: StaticClientOptions = {}): DataClien
           ? ("string" as const)
           : ("number" as const),
       }));
+    }).catch((error) => {
+      describePromise = null;
+      throw error;
     });
     return describePromise;
   };

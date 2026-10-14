@@ -179,6 +179,28 @@ describe("static client — CSV export", () => {
 });
 
 describe("static client — fields", () => {
+  it("retries the manifest after a temporary network failure", async () => {
+    const { runner } = scriptedRunner();
+    const fetchImpl = vi.fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue({ ok: true, json: async () => FILES["manifest.json"] });
+    const client = createStaticClient({ runner: async () => runner, fetchImpl, baseUrl: "/" });
+    expect(await client.fields()).toEqual([]);
+    expect((await client.fields()).length).toBeGreaterThan(0);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries failed DuckDB bootstrap and schema discovery", async () => {
+    const { runner } = scriptedRunner();
+    const bootstrap = vi.fn()
+      .mockRejectedValueOnce(new Error("worker unavailable"))
+      .mockResolvedValue(runner);
+    const client = createStaticClient({ runner: bootstrap, fetchImpl: stubFetch(FILES), baseUrl: "/" });
+    await expect(client.fields()).rejects.toThrow("worker unavailable");
+    expect((await client.fields()).length).toBeGreaterThan(0);
+    expect(bootstrap).toHaveBeenCalledTimes(2);
+  });
+
   it("derives the query builder field list from one DESCRIBE (types included)", async () => {
     const { runner, calls } = scriptedRunner();
     const client = makeClient(runner);
