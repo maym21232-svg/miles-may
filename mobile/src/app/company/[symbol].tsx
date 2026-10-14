@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FinancialReport } from '../../components/FinancialReport';
 import { PriceHistory } from '../../components/PriceHistory';
@@ -11,7 +12,8 @@ import { color } from '../../lib/theme';
 export default function CompanyScreen() {
   const { symbol } = useLocalSearchParams<{ symbol: string }>();
   const insets = useSafeAreaInsets();
-  const { data, now, watchlist, toggleWatchlist, universe } = useResearch();
+  const { data, now, loading, refresh, watchlist, toggleWatchlist, universe } = useResearch();
+  const [reload, setReload] = useState(0);
   const code = (symbol ?? '').toUpperCase();
   const long = data?.board.long.find((item) => item.symbol === code);
   const short = data?.board.short.find((item) => item.symbol === code);
@@ -37,7 +39,7 @@ export default function CompanyScreen() {
   }
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 30 }]}>
+    <ScrollView style={styles.page} contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 30 }]} refreshControl={<RefreshControl refreshing={loading} onRefresh={() => { void refresh().then(() => setReload((value) => value + 1)); }} tintColor={color.green} />}>
       <View style={styles.heading}><View style={{ flex: 1 }}><Text style={styles.symbol}>{code}</Text><Text style={styles.name}>{company?.name ?? '暂未收录'}</Text></View><Pressable accessibilityRole="button" accessibilityLabel={watched ? '移出自选' : '加入自选'} onPress={() => toggleWatchlist(code)} style={styles.star}><Ionicons name={watched ? 'star' : 'star-outline'} size={25} color={color.green} /></Pressable></View>
       <Text style={styles.sector}>{sectorName(company?.sector ?? '') || '—'}</Text>
       <View style={styles.notice}><Ionicons name="information-circle-outline" size={19} color={color.amber} /><Text style={styles.noticeText}>这里展示历史公开数据，不是实时行情，也不是买卖建议。请核对财报期与价格日期。</Text></View>
@@ -45,8 +47,8 @@ export default function CompanyScreen() {
       <Text style={styles.title}>{long ? '基本面概览' : short ? '走势概览' : '公司概览'}</Text>
       <View style={styles.metrics}>{rows.map(([label, value]) => <View style={styles.row} key={label}><Text style={styles.label}>{label}</Text><Text style={styles.value}>{value}</Text></View>)}</View>
       <Pressable accessibilityRole="link" style={styles.secLink} onPress={() => void Linking.openURL(`https://www.sec.gov/edgar/browse/?CIK=${encodeURIComponent(code)}&owner=exclude`)}><Text style={styles.secLinkText}>在 SEC 查找原始申报</Text><Ionicons name="open-outline" size={17} color={color.green} /></Pressable>
-      <PriceHistory key={code} symbol={code} />
-      <FinancialReport key={code} symbol={code} />
+      <PriceHistory key={`${code}-${reload}`} symbol={code} />
+      <FinancialReport key={`${code}-${reload}`} symbol={code} />
       <Pressable accessibilityRole="link" style={styles.open} onPress={() => void Linking.openURL(`${SITE}#/company/${encodeURIComponent(code)}`)}><Text style={styles.openText}>查看完整财报与背调</Text><Ionicons name="open-outline" size={19} color={color.white} /></Pressable>
       <Text style={styles.footnote}>完整报告在网页版打开，包含数据来源与更详细的研究材料。</Text>
     </ScrollView>
