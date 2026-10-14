@@ -44,8 +44,17 @@ describe("paper desk", () => {
     expect(screen.getByText(/模拟起始资金/)).toHaveTextContent("模拟资产暂不可估值");
   });
 
+  it("suppresses old decisions at the conservative post-close cutoff", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-13T20:00:00Z"));
+    render(<PaperDesk report={report} onSelect={vi.fn()} />);
+    expect(screen.getByText("已暂停")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "模拟卖出决定" })).not.toHaveTextContent("AAPL");
+  });
+
   it("uses Friday as the previous weekday on Monday", () => {
     expect(expectedCloseDate(new Date("2026-10-12T12:00:00Z"))).toBe("2026-10-09");
+    expect(expectedCloseDate(new Date("2026-10-12T20:00:00Z"))).toBe("2026-10-12");
   });
 
   it("enables a moving strip only when at least four orders exist", () => {

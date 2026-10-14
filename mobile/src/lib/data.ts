@@ -115,7 +115,9 @@ export async function loadPriceHistory(symbol: string): Promise<PriceBar[]> {
 }
 
 export function expectedCloseDate(now = new Date()): string {
-  const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+  // 20:00 UTC is the earliest regular 4 p.m. ET close; winter may pause an hour early.
+  const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(),
+    now.getUTCDate() - (now.getUTCHours() >= 20 ? 0 : 1)));
   while (day.getUTCDay() === 0 || day.getUTCDay() === 6) day.setUTCDate(day.getUTCDate() - 1);
   return day.toISOString().slice(0, 10);
 }
