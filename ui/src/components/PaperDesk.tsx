@@ -39,8 +39,9 @@ export interface PaperReport {
   method: string;
 }
 
-const money = (value: number) =>
-  new Intl.NumberFormat("zh-CN", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
+const money = (value: number) => Number.isFinite(value)
+  ? new Intl.NumberFormat("zh-CN", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value)
+  : "—";
 
 export function expectedCloseDate(now = new Date()): string {
   // 20:00 UTC is the earliest regular 4 p.m. ET close; winter may pause an hour early.
@@ -132,8 +133,10 @@ export function PaperDesk({ report, error = false, onSelect, onRetry, showHeadin
   const paused = paperPaused(report, now);
   const staleOnDevice = report?.status === "ready" && report.data_date !== expectedCloseDate(now);
   const pending = paused ? [] : report?.pending ?? [];
-  const valued = !!report && !paused && report.positions.every((position) =>
-    position.mark_price != null && Number.isFinite(position.mark_price));
+  const valued = !!report && !paused && Number.isFinite(report.cash) && report.cash >= 0 &&
+    Number.isFinite(report.starting_cash) && report.starting_cash > 0 &&
+    report.positions.every((position) => Number.isFinite(position.shares) && position.shares > 0 &&
+      position.mark_price != null && Number.isFinite(position.mark_price) && position.mark_price > 0);
   const equity = valued && report
     ? report.cash + report.positions.reduce((sum, position) => sum + position.shares * position.mark_price!, 0)
     : null;

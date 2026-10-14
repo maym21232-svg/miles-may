@@ -82,7 +82,7 @@ export default function DiscoverScreen() {
           <Text style={styles.methodLine}>数据日期：{data.paper.data_date}　预期：{data.paper.expected_date}</Text>
           {typeof data.paper.starting_cash === 'number' && <Text style={styles.methodLine}>起始模拟资金：{money(data.paper.starting_cash)}</Text>}
           <Text style={styles.methodLine}>虚拟持仓：{data.paper.positions.length} 只　现金：{money(data.paper.cash)}</Text>
-          <Text style={styles.methodLine}>{equity === null ? '组合净值：行情不足，暂不估值' : `组合净值：${money(equity)}${data.paper.starting_cash ? `（${((equity / data.paper.starting_cash - 1) * 100).toFixed(2)}%）` : ''}`}</Text>
+          <Text style={styles.methodLine}>{equity === null ? '组合净值：行情不足，暂不估值' : `组合净值：${money(equity)}${typeof data.paper.starting_cash === 'number' && Number.isFinite(data.paper.starting_cash) && data.paper.starting_cash > 0 ? `（${((equity / data.paper.starting_cash - 1) * 100).toFixed(2)}%）` : ''}`}</Text>
           <Text style={styles.methodLine}>{data.paper.method}</Text>
           {!!orders.length && <Text style={styles.methodCaption}>待下个开盘模拟执行</Text>}
           {!orders.length && <Text style={styles.methodLine}>本轮没有待执行的模拟买卖。</Text>}

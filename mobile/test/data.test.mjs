@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { currentShortCandidates, expectedCloseDate, fetchJson, isCompanyDetail, isPaperCurrent, isShortBoardCurrent, loadCompanyDetail, loadPriceHistory, loadUniverse, paperEquity, paperPauseMessage, sectorName } from '../src/lib/data.ts';
+import { currentShortCandidates, expectedCloseDate, fetchJson, isCompanyDetail, isPaperCurrent, isShortBoardCurrent, loadCompanyDetail, loadPriceHistory, loadUniverse, money, paperEquity, paperPauseMessage, percent, sectorName } from '../src/lib/data.ts';
 import { financialNotes } from '../src/lib/finance.ts';
 
 function report(overrides = {}) {
@@ -99,6 +99,13 @@ test('does not value simulated holdings from stale or missing marks', () => {
   assert.equal(paperEquity(paper, true), 700);
   assert.equal(paperEquity(paper, false), null);
   assert.equal(paperEquity({ ...paper, positions: [{ symbol: 'A', shares: 2, mark_price: null }] }, true), null);
+  assert.equal(paperEquity({ ...paper, cash: -1 }, true), null);
+});
+
+test('formats invalid financial numbers as missing rather than NaN', () => {
+  assert.equal(money(Number.NaN), '—');
+  assert.equal(money(Number.POSITIVE_INFINITY), '—');
+  assert.equal(percent(Number.NaN), '—');
 });
 
 test('loads price bars from the matching shard and rejects invalid prices', async () => {

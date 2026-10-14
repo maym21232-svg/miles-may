@@ -171,7 +171,7 @@ export function currentShortCandidates(data: ResearchData, now = new Date()): Ca
 }
 
 export function paperEquity(paper: PaperPortfolio, current: boolean): number | null {
-  if (!current || !Number.isFinite(paper.cash) || !Array.isArray(paper.positions)) return null;
+  if (!current || !Number.isFinite(paper.cash) || paper.cash < 0 || !Array.isArray(paper.positions)) return null;
   if (paper.positions.some((position) => !Number.isFinite(position.shares) || position.shares <= 0
     || typeof position.mark_price !== 'number' || !Number.isFinite(position.mark_price)
     || position.mark_price <= 0)) return null;
@@ -179,11 +179,11 @@ export function paperEquity(paper: PaperPortfolio, current: boolean): number | n
 }
 
 export function percent(value?: number): string {
-  return typeof value === 'number' ? `${(value * 100).toFixed(1)}%` : '—';
+  return typeof value === 'number' && Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : '—';
 }
 
 export function money(value?: number): string {
-  if (typeof value !== 'number') return '—';
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
   const absolute = Math.abs(value);
   if (absolute >= 1e9) return `$${(value / 1e9).toFixed(1)}B`;
   if (absolute >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;

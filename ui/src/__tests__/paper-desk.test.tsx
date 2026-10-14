@@ -52,6 +52,24 @@ describe("paper desk", () => {
     expect(screen.getByRole("region", { name: "模拟卖出决定" })).not.toHaveTextContent("AAPL");
   });
 
+  it("does not value a portfolio with invalid cash, marks, shares or starting capital", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-13T12:00:00Z"));
+    for (const patch of [
+      { cash: Number.NaN },
+      { cash: -1 },
+      { starting_cash: 0 },
+      { positions: [{ ...report.positions[0], shares: 0 }] },
+      { positions: [{ ...report.positions[0], mark_price: -1 }] },
+    ]) {
+      const { unmount } = render(<PaperDesk report={{ ...report, ...patch }} onSelect={vi.fn()} />);
+      fireEvent.click(screen.getByText("虚拟仓与决策依据"));
+      expect(screen.getByText(/模拟起始资金/)).toHaveTextContent("模拟资产暂不可估值");
+      expect(screen.getByText(/模拟起始资金/)).not.toHaveTextContent("NaN");
+      unmount();
+    }
+  });
+
   it("pauses mismatched, expired and invalid reports even when the price date matches", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-10-13T12:00:00Z"));
