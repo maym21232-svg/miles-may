@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { currentShortCandidates, expectedCloseDate, fetchJson, isPaperCurrent, isShortBoardCurrent, loadCompanyDetail, loadPriceHistory, loadUniverse, paperEquity, paperPauseMessage, sectorName } from '../src/lib/data.ts';
+import { financialNotes } from '../src/lib/finance.ts';
 
 function report(overrides = {}) {
   return {
@@ -79,6 +80,18 @@ test('explains why a paper report is paused', () => {
   assert.match(paperPauseMessage({ ...data, paper: { ...paper, data_date: '2026-10-09' } }, now), /等待 2026-10-12/);
   assert.match(paperPauseMessage({ ...data, paper: { ...paper, coverage: 0.9 } }, now), /覆盖率/);
   assert.match(paperPauseMessage({ ...data, paper: { ...paper, expected_date: '2026-10-09' } }, now), /预期交易日/);
+});
+
+test('financial notes call out cash-flow contradictions without making trade calls', () => {
+  const notes = financialNotes({ period: '2026-06-30', revenue_growth: -0.05,
+    net_income: 100, operating_cashflow: -10, free_cash_flow: -20 });
+  assert.equal(notes.length, 3);
+  assert.match(notes[0], /营收增长率为负/);
+  assert.match(notes[1], /净利润为正，但经营现金流为负/);
+  assert.match(notes[2], /自由现金流为负/);
+  assert.deepEqual(financialNotes({ period: '2026-06-30', operating_cashflow: 20,
+    free_cash_flow: 5 }), ['经营现金流与自由现金流均为正；仍需结合多个财报期及附注判断持续性。']);
+  assert.match(financialNotes({ period: '2026-06-30', free_cash_flow: Number.NaN })[0], /暂不作自动解读/);
 });
 
 test('does not value simulated holdings from stale or missing marks', () => {
