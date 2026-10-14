@@ -17,6 +17,7 @@ export default function StatusScreen() {
   const insets = useSafeAreaInsets();
   const { data, error, loading, refresh, universe } = useResearch();
   const current = !!data && data.source === 'network' && isPaperCurrent(data.paper);
+  const snapshot = data?.board.generated_at ? new Date(data.board.generated_at * 1000) : null;
   return (
     <ScrollView style={styles.page} contentContainerStyle={[styles.body, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 30 }]} refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void refresh()} tintColor={color.green} />}>
       <View style={styles.header}><Text style={styles.title}>数据说明</Text><Pressable accessibilityRole="button" accessibilityLabel="刷新数据" style={styles.refresh} onPress={() => void refresh()}><Ionicons name="refresh" color={color.green} size={22} /></Pressable></View>
@@ -27,6 +28,7 @@ export default function StatusScreen() {
         <Fact label="获取方式" value={data?.source === 'network' ? '联网' : data ? '本机缓存' : '尚未获取'} />
         <Fact label="上次获取" value={data?.fetchedAt.toLocaleString('zh-CN') ?? '—'} />
         <Fact label="公司目录" value={universe.length ? `${universe.length.toLocaleString('zh-CN')} 家` : '尚未加载'} />
+        <Fact label="研究快照生成" value={snapshot && !Number.isNaN(snapshot.getTime()) ? snapshot.toLocaleString('zh-CN') : '—'} />
         <Fact label="典型行情日期" value={data?.board.prices_typical_date ?? '—'} />
         <Fact label="模拟决策" value={current ? '可用' : '暂停'} />
         <Fact label="模拟数据日期" value={data?.paper.data_date ?? '—'} />
@@ -36,7 +38,7 @@ export default function StatusScreen() {
       {!current && <View style={styles.warning}><Ionicons name="warning-outline" size={19} color={color.amber} /><Text style={styles.warningText}>{data?.source === 'cache' ? '当前离线；旧报告只供查看，不展示买卖信号。' : data?.paper.data_date !== expectedCloseDate() ? `等待 ${expectedCloseDate()} 的行情；模拟买卖暂停。` : data?.paper.reason || '报告过期或行情不足；模拟买卖暂停。'}</Text></View>}
 
       <Text style={styles.sectionTitle}>更新方式</Text>
-      <Text style={styles.copy}>网页数据由 GitHub Actions 每日尝试重建。App 打开后联网加载，下拉或点刷新按钮可以手动更新；留在前台或重新回到前台超过 15 分钟时会再次检查。iOS 后台不保证持续运行，源数据更新失败时也不会产生新行情。</Text>
+      <Text style={styles.copy}>网页数据由 GitHub Actions 每日尝试重建。快照生成时间变新，不代表上游提供了新收盘价；请以典型行情日期为准。App 打开后联网加载，下拉或点刷新按钮可以手动更新；留在前台或重新回到前台超过 15 分钟时会再次检查。iOS 后台不保证持续运行，源数据更新失败时也不会产生新行情。</Text>
       <Text style={styles.sectionTitle}>来源与核对</Text>
       <Text style={styles.copy}>本应用从公开的 GitHub Pages 数据文件读取研究结果。处理流程与上游清单可公开核对；每家公司财报页还会显示其对应的提供方或申报来源。</Text>
       <ExternalLink title="查看上游数据清单" url="https://maxgfr.github.io/crible/data/manifest.json" />

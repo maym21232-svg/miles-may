@@ -47,7 +47,8 @@ export async function loadResearch(): Promise<ResearchData> {
     readJson<HorizonBoard>('horizon-board.json'),
     readJson<PaperPortfolio>('paper-portfolio.json'),
   ]);
-  if (!Array.isArray(board.long) || !Array.isArray(board.short) || !Array.isArray(paper.pending)) {
+  if (!Array.isArray(board.long) || !Array.isArray(board.short) || !Array.isArray(paper.pending)
+    || !Array.isArray(paper.positions) || (paper.fills != null && !Array.isArray(paper.fills))) {
     throw new Error('数据格式有误');
   }
   return { board, paper, fetchedAt: new Date(), source: 'network' };

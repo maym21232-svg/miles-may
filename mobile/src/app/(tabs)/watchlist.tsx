@@ -3,12 +3,14 @@ import { Link } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CandidateRow } from '../../components/CandidateRow';
+import { isShortBoardCurrent } from '../../lib/data';
 import { useResearch } from '../../lib/ResearchContext';
 import { color } from '../../lib/theme';
 
 export default function WatchlistScreen() {
   const insets = useSafeAreaInsets();
   const { data, watchlist, universe } = useResearch();
+  const shortCurrent = !!data && isShortBoardCurrent(data);
   const candidates = [...(data?.board.long ?? []), ...(data?.board.short ?? [])];
   const saved = watchlist.map((symbol) => {
     const candidate = candidates.find((item) => item.symbol === symbol);
@@ -22,7 +24,7 @@ export default function WatchlistScreen() {
       <Text style={styles.subtitle}>保存在这台设备上，不会同步到云端。</Text>
       {!watchlist.length && <View style={styles.empty}><Ionicons name="star-outline" size={32} color={color.green} /><Text style={styles.emptyTitle}>还没有自选公司</Text><Text style={styles.emptyCopy}>在公司研究页点击星标，就会出现在这里。</Text><Link href="/" style={styles.link}>去发现公司</Link></View>}
       {saved.map((item, index) => item
-        ? <CandidateRow key={item.symbol} candidate={item} short={!data?.board.long.some((long) => long.symbol === item.symbol)} />
+        ? <CandidateRow key={item.symbol} candidate={item} short={shortCurrent && !data?.board.long.some((long) => long.symbol === item.symbol)} />
         : <View key={watchlist[index]} style={styles.missing}><Text style={styles.missingSymbol}>{watchlist[index]}</Text><Text style={styles.missingNote}>当前候选数据中暂无这家公司</Text></View>)}
     </ScrollView>
   );

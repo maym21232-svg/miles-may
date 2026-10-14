@@ -13,7 +13,9 @@ function cachedResearch(saved: string | null): ResearchData | null {
   const parsed: unknown = JSON.parse(saved);
   if (!parsed || typeof parsed !== 'object') return null;
   const value = parsed as Partial<ResearchData>;
-  if (!Array.isArray(value.board?.long) || !Array.isArray(value.board?.short) || !Array.isArray(value.paper?.pending)) return null;
+  if (!Array.isArray(value.board?.long) || !Array.isArray(value.board?.short)
+    || !Array.isArray(value.paper?.pending) || !Array.isArray(value.paper?.positions)
+    || (value.paper.fills != null && !Array.isArray(value.paper.fills))) return null;
   const fetchedAt = new Date(value.fetchedAt as unknown as string);
   if (Number.isNaN(fetchedAt.getTime())) return null;
   return { board: value.board, paper: value.paper, fetchedAt, source: 'cache' };

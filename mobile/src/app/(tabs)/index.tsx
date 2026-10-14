@@ -79,15 +79,22 @@ export default function DiscoverScreen() {
           <Text style={styles.methodLine}>数据日期：{data.paper.data_date}　预期：{data.paper.expected_date}</Text>
           <Text style={styles.methodLine}>虚拟持仓：{data.paper.positions.length} 只　现金：${data.paper.cash.toLocaleString('en-US')}</Text>
           <Text style={styles.methodLine}>{data.paper.method}</Text>
-          {data.paper.positions.map((position) => <View key={position.symbol} style={styles.orderReason}>
-            <Text style={styles.orderTitle}>{position.symbol}{position.name ? ` · ${position.name}` : ''} · {position.shares} 股</Text>
-            <Text style={styles.methodLine}>模拟买入 {money(position.entry_price)} · {position.entry_date}{typeof position.mark_price === 'number' ? ` · 最近收盘 ${money(position.mark_price)}` : ''}</Text>
-          </View>)}
+          {!!orders.length && <Text style={styles.methodCaption}>待下个开盘模拟执行</Text>}
+          {!orders.length && <Text style={styles.methodLine}>本轮没有待执行的模拟买卖。</Text>}
           {orders.map((order) => <View key={`${order.side}-${order.symbol}`} style={styles.orderReason}>
             <Text style={styles.orderTitle}>{order.side === 'buy' ? '模拟买入' : '模拟卖出'} · {order.symbol}{order.name ? ` · ${order.name}` : ''}</Text>
             <Text style={styles.methodLine}>{order.reason || '未提供决策说明'}</Text>
             {typeof order.reference_close === 'number' && <Text style={styles.methodLine}>参考收盘价 {money(order.reference_close)} · 决策日 {order.decision_date || data.paper.data_date}</Text>}
           </View>)}
+          <Text style={styles.methodCaption}>当前虚拟持仓</Text>
+          {data.paper.positions.map((position) => <View key={position.symbol} style={styles.orderReason}>
+            <Text style={styles.orderTitle}>{position.symbol}{position.name ? ` · ${position.name}` : ''} · {position.shares} 股</Text>
+            <Text style={styles.methodLine}>模拟买入 {money(position.entry_price)} · {position.entry_date}{typeof position.mark_price === 'number' ? ` · 最近收盘 ${money(position.mark_price)}` : ''}</Text>
+          </View>)}
+          {!data.paper.positions.length && <Text style={styles.methodLine}>暂无虚拟持仓。</Text>}
+          <Text style={styles.methodCaption}>最近模拟成交</Text>
+          {(data.paper.fills ?? []).slice(-5).reverse().map((fill, index) => <Text key={`${fill.date}-${fill.symbol}-${index}`} style={styles.methodLine}>{fill.date} · {fill.side === 'buy' ? '买入' : '卖出'} {fill.symbol} {fill.shares} 股 · {money(fill.price)}</Text>)}
+          {!data.paper.fills?.length && <Text style={styles.methodLine}>暂无模拟成交记录。</Text>}
           <Text style={styles.disclaimer}>仅为研究与模拟记录，不构成投资建议；不会实际下单。</Text>
         </View>}
 
@@ -138,6 +145,7 @@ const styles = StyleSheet.create({
   methodLabel: { flex: 1, color: color.ink, fontSize: 15, fontWeight: '600' },
   methodBody: { padding: 14, backgroundColor: color.white, borderRadius: 14, marginTop: 5 },
   methodLine: { color: color.muted, fontSize: 13, lineHeight: 22 },
+  methodCaption: { color: color.ink, fontSize: 14, fontWeight: '700', marginTop: 16, marginBottom: 3 },
   orderReason: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: color.line, marginTop: 12, paddingTop: 11 },
   orderTitle: { color: color.ink, fontSize: 14, fontWeight: '700', marginBottom: 3 },
   disclaimer: { color: color.amber, fontSize: 12, lineHeight: 18, marginTop: 7 },

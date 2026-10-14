@@ -37,6 +37,14 @@ export type PaperPosition = {
   mark_price?: number | null;
 };
 
+export type PaperFill = {
+  date: string;
+  side: 'buy' | 'sell';
+  symbol: string;
+  shares: number;
+  price: number;
+};
+
 export type PaperPortfolio = {
   status: string;
   reason: string | null;
@@ -45,8 +53,10 @@ export type PaperPortfolio = {
   expected_date: string;
   coverage: number;
   cash: number;
+  starting_cash?: number;
   positions: PaperPosition[];
   pending: PaperOrder[];
+  fills?: PaperFill[];
   method: string;
 };
 

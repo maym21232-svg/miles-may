@@ -88,7 +88,8 @@ export function PriceHistory({ symbol }: { symbol: string }) {
           <Line x1="0" y1="132" x2="320" y2="132" stroke={color.line} strokeWidth="1" />
           <Polyline points={chart.points} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
         </Svg>
-        <View style={styles.axis}><Text style={styles.axisText}>{chart.rows[0].date}</Text><Text style={styles.axisText}>最低 ${chart.low.toFixed(2)} · 最高 ${chart.high.toFixed(2)}</Text><Text style={styles.axisText}>{latest.date}</Text></View>
+        <View style={styles.axis}><Text style={styles.axisText}>{chart.rows[0].date}</Text><Text style={styles.axisText}>{latest.date}</Text></View>
+        <Text style={styles.extremes}>区间最低 ${chart.low.toFixed(2)} · 最高 ${chart.high.toFixed(2)}</Text>
       </View>}
       {!chart && !loading && <Text style={styles.empty}>价格记录不足，暂不能绘制走势。</Text>}
       {latest && <Text style={styles.source}>数据提供方：{latest.source || '未标明'} · 价格可能延迟或缺失，交易前请核对正式行情。</Text>}
@@ -112,7 +113,8 @@ const styles = StyleSheet.create({
   segmentTextActive: { color: color.white },
   plot: { backgroundColor: color.white, borderRadius: 15, borderWidth: 1, borderColor: color.line, paddingHorizontal: 12, paddingTop: 12, paddingBottom: 10 },
   axis: { flexDirection: 'row', justifyContent: 'space-between', gap: 4 },
-  axisText: { color: color.muted, fontSize: 10, flexShrink: 1 },
+  axisText: { color: color.muted, fontSize: 12 },
+  extremes: { color: color.muted, fontSize: 12, textAlign: 'center', marginTop: 6 },
   source: { color: color.muted, fontSize: 12, lineHeight: 18, marginTop: 10 },
   notice: { color: color.amber, fontSize: 13, marginBottom: 9 },
   errorRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 },
