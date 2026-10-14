@@ -5,13 +5,14 @@ from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
-from make_paper_portfolio import advance, empty_ledger, fill_pending, run
+from make_paper_portfolio import advance, empty_ledger, fill_pending, previous_weekday, run
 
 
-def row(day: str, close=100.0, opening=99.0):
+def row(day: str, close=100.0, opening=99.0, previous=None):
     return {
         "symbol": "TEST", "name": "Test Company", "sector": "Industrials",
-        "price_date": day, "bars": 61, "open": opening, "close": close,
+        "price_date": day, "previous_price_date": previous or previous_weekday(date.fromisoformat(day)),
+        "bars": 61, "open": opening, "close": close,
         "volume": 1_500_000, "volume20": 1_000_000,
         "close_20_ago": 92.0, "close_60_ago": 85.0,
         "ma20": 96.0, "ma60": 90.0, "turnover20": 30_000_000,
@@ -50,6 +51,19 @@ class PaperPortfolioTest(unittest.TestCase):
         fill_pending(ledger, {"TEST": row("2026-10-14")}, "2026-10-14")
         self.assertEqual(ledger["positions"], [])
         self.assertEqual(ledger["pending"], [])
+
+    def test_holiday_gap_fills_at_actual_next_trading_open(self):
+        ledger = empty_ledger()
+        advance(ledger, {"TEST": row("2026-11-25")}, "2026-11-25")
+        advance(ledger, {"TEST": row("2026-11-27", previous=date(2026, 11, 25))}, "2026-11-27")
+        self.assertEqual(ledger["positions"][0]["entry_date"], "2026-11-27")
+
+    def test_missing_intermediate_trading_bar_never_backfills_order(self):
+        ledger = empty_ledger()
+        advance(ledger, {"TEST": row("2026-10-12")}, "2026-10-12")
+        advance(ledger, {"TEST": row("2026-10-14", previous=date(2026, 10, 13))}, "2026-10-14")
+        self.assertEqual(ledger["positions"], [])
+        self.assertEqual(ledger["fills"], [])
 
     def test_large_opening_gap_cancels_buy(self):
         ledger = empty_ledger()

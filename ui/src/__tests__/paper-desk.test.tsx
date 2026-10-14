@@ -93,6 +93,8 @@ describe("paper desk", () => {
   it("uses Friday as the previous weekday on Monday", () => {
     expect(expectedCloseDate(new Date("2026-10-12T12:00:00Z"))).toBe("2026-10-09");
     expect(expectedCloseDate(new Date("2026-10-12T20:00:00Z"))).toBe("2026-10-12");
+    expect(expectedCloseDate(new Date("2026-01-12T20:59:00Z"))).toBe("2026-01-09");
+    expect(expectedCloseDate(new Date("2026-01-12T21:00:00Z"))).toBe("2026-01-12");
   });
 
   it("enables a moving strip only when at least four orders exist", () => {

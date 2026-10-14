@@ -43,10 +43,16 @@ const money = (value: number) => Number.isFinite(value)
   ? new Intl.NumberFormat("zh-CN", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value)
   : "—";
 
+const easternClock = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit",
+  hour: "2-digit", hourCycle: "h23",
+});
+
 export function expectedCloseDate(now = new Date()): string {
-  // 20:00 UTC is the earliest regular 4 p.m. ET close; winter may pause an hour early.
-  const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(),
-    now.getUTCDate() - (now.getUTCHours() >= 20 ? 0 : 1)));
+  const parts = easternClock.formatToParts(now);
+  const value = (type: string) => Number(parts.find((part) => part.type === type)?.value);
+  const day = new Date(Date.UTC(value("year"), value("month") - 1,
+    value("day") - (value("hour") >= 16 ? 0 : 1)));
   while (day.getUTCDay() === 0 || day.getUTCDay() === 6) day.setUTCDate(day.getUTCDate() - 1);
   return day.toISOString().slice(0, 10);
 }

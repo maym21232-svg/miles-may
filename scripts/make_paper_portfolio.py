@@ -61,6 +61,7 @@ def price_rows(data_dir: Path) -> dict[str, dict]:
                    max(date) FILTER (WHERE rn = 1) AS price_date,
                    max(open) FILTER (WHERE rn = 1) AS open,
                    max(close) FILTER (WHERE rn = 1) AS close,
+                   max(date) FILTER (WHERE rn = 2) AS previous_price_date,
                    max(volume) FILTER (WHERE rn = 1) AS volume,
                    max(close) FILTER (WHERE rn = 21) AS close_20_ago,
                    max(close) FILTER (WHERE rn = 61) AS close_60_ago,
@@ -141,8 +142,8 @@ def fill_pending(ledger: dict, rows: dict[str, dict], price_date: str) -> None:
     positions = {item["symbol"]: item for item in ledger["positions"]}
     for order in sorted(pending, key=lambda item: item["side"] != "sell"):
         row = rows.get(order["symbol"])
-        if (order["decision_date"] != previous_weekday(date.fromisoformat(price_date)).isoformat()
-                or not row or str(row["price_date"]) != price_date):
+        if (not row or order["decision_date"] != str(row.get("previous_price_date"))
+                or str(row["price_date"]) != price_date):
             continue
         opening = row["open"]
         if not finite(opening) or opening <= 0:

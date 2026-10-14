@@ -30,6 +30,8 @@ test('accepts only a fresh, ready report covering its expected trading date', ()
 test('pauses decisions after the calendar rolls to the next trading date', () => {
   assert.equal(expectedCloseDate(new Date('2026-10-12T12:00:00Z')), '2026-10-09');
   assert.equal(expectedCloseDate(new Date('2026-10-12T20:00:00Z')), '2026-10-12');
+  assert.equal(expectedCloseDate(new Date('2026-01-12T20:59:00Z')), '2026-01-09');
+  assert.equal(expectedCloseDate(new Date('2026-01-12T21:00:00Z')), '2026-01-12');
   assert.equal(expectedCloseDate(new Date('2026-10-13T12:00:00Z')), '2026-10-12');
   const monday = new Date('2026-10-12T12:00:00Z');
   assert.equal(isPaperCurrent(report({ generated_at: monday.toISOString(), data_date: '2026-10-09', expected_date: '2026-10-09' }), monday), true);
