@@ -1,7 +1,4 @@
-// Live-quote chip under the drawer title — renders ONLY when the published
-// close is stale (not today's) AND the best-effort fetch actually landed.
-// Clearly labeled unofficial, with the dataset as-of alongside so the two
-// vintages are never confused.
+// A recent direct quote is display-only and stays separate from the EOD data.
 
 import { useEffect, useState } from "react";
 import { fetchLiveQuote, isStale, type LiveQuote as Quote } from "../data/live-quote";
@@ -34,18 +31,18 @@ export function LiveQuote({ symbol, asof }: { symbol: string; asof: string | nul
   return (
     <p className="live-quote" role="status">
       <span className="live-quote-dot" aria-hidden="true" />
-      live {fmt(quote.price)}
+      参考报价 {fmt(quote.price)}
       {quote.currency ? ` ${quote.currency}` : ""}
       {change !== null && (
         <span className={change < 0 ? "num-bad" : "num-good"}>
           {" "}
           {change >= 0 ? "+" : ""}
-          {(change * 100).toFixed(1)}% vs last close
+          {(change * 100).toFixed(1)}% 较前收盘
         </span>
       )}
       <span className="meta">
         {" "}
-        · {when} UTC · {quote.source}, unofficial · dataset close {asof ?? "missing"}
+        · {when} UTC · {quote.source}，非官方 · 研究数据收盘 {asof ?? "未知"}
       </span>
     </p>
   );
