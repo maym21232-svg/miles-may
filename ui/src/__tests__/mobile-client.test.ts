@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const manifest = {
-  schema: 2, bundle_version: 3, generated_at: 1234, mobile_shards: 256,
+  schema: 2, bundle_version: 4, generated_at: 1234, bundle_built_at: 5678, mobile_shards: 256,
   prices: { symbols: 1, bars: 1, window_days: 400, max_date: "2026-10-09", shards: [] },
 };
 
@@ -31,8 +31,8 @@ describe("mobile data client", () => {
     }]);
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
       expect.stringContaining("manifest.json"),
-      expect.stringContaining(`companies-${number}.json?v=1234`),
-      expect.stringContaining(`prices-${number}.json?v=1234`),
+      expect.stringContaining(`companies-${number}.json?v=5678`),
+      expect.stringContaining(`prices-${number}.json?v=5678`),
     ]);
     await mobileClient.company("AAPL");
     expect(fetcher).toHaveBeenCalledTimes(3);
@@ -55,13 +55,20 @@ describe("mobile data client", () => {
 
   it("retries a failed screen request", async () => {
     let attempts = 0;
-    vi.stubGlobal("fetch", vi.fn(async () => {
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.includes("manifest.json")) return { ok: true, json: async () => manifest };
       attempts += 1;
       if (attempts === 1) throw new Error("offline");
       return { ok: true, json: async () => ({ foo: [{ symbol: "AAPL" }] }) };
-    }));
+    });
+    vi.stubGlobal("fetch", fetcher);
     const { mobileClient } = await import("../data/mobile-client");
     await expect(mobileClient.screen("foo", null, 1, 10)).rejects.toThrow("offline");
     expect((await mobileClient.screen("foo", null, 1, 10)).rows).toEqual([{ symbol: "AAPL" }]);
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      expect.stringContaining("manifest.json"),
+      expect.stringContaining("screens.json?v=5678"),
+      expect.stringContaining("screens.json?v=5678"),
+    ]);
   });
 });

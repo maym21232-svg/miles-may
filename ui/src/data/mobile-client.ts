@@ -22,17 +22,21 @@ const companyShards = new Map<number, Promise<Record<string, CompanyDetail>>>();
 type CompactPrice = [string, number | null, string];
 const priceShards = new Map<number, Promise<Record<string, CompactPrice[]>>>();
 
-const screens = () => screensPromise ??= json<Record<string, Record<string, unknown>[]>>("screens.json")
+const screens = () => screensPromise ??= versionedJson<Record<string, Record<string, unknown>[]>>("screens.json")
   .catch((error) => { screensPromise = null; throw error; });
-const overview = () => overviewPromise ??= json<SearchHit[]>("overview.json")
+const overview = () => overviewPromise ??= versionedJson<SearchHit[]>("overview.json")
   .catch((error) => { overviewPromise = null; throw error; });
-const featured = () => featuredPromise ??= json<Record<string, CompanyDetail>>("featured.json")
+const featured = () => featuredPromise ??= versionedJson<Record<string, CompanyDetail>>("featured.json")
   .catch((error) => { featuredPromise = null; throw error; });
 const fullClient = () => fullClientPromise ??= import("./static-client")
   .then((module) => module.createStaticClient())
   .catch((error) => { fullClientPromise = null; throw error; });
 const manifest = () => manifestPromise ??= json<SiteManifest>("manifest.json", "no-store")
   .catch((error) => { manifestPromise = null; throw error; });
+const versionedJson = async <T>(name: string): Promise<T> => {
+  const current = await manifest();
+  return json<T>(`${name}?v=${current.bundle_built_at ?? current.generated_at}`);
+};
 
 export function mobileShardNumber(symbol: string, count: number): number {
   let value = 0;
@@ -104,7 +108,7 @@ export const mobileClient: DataClient = {
     const current = await manifest();
     if (current.mobile_shards) {
       const companies = await shard("companies", symbol, current.mobile_shards,
-        current.generated_at, companyShards);
+        current.bundle_built_at ?? current.generated_at, companyShards);
       return companies[symbol] ?? null;
     }
     const cached = (await featured())[symbol];
@@ -119,17 +123,17 @@ export const mobileClient: DataClient = {
     ).slice(0, 20);
   },
 
-  fields: () => json<FieldInfo[]>("fields.json"),
-  status: () => json<StatusResponse>("status.json"),
-  presets: () => json<Preset[]>("presets.json"),
-  providers: () => json<ProviderInfo[]>("providers.json"),
+  fields: () => versionedJson<FieldInfo[]>("fields.json"),
+  status: () => versionedJson<StatusResponse>("status.json"),
+  presets: () => versionedJson<Preset[]>("presets.json"),
+  providers: () => versionedJson<ProviderInfo[]>("providers.json"),
   manifest: () => json<SiteManifest>("manifest.json", "no-store"),
   async prices(symbol): Promise<PriceBar[]> {
     const current = await manifest();
     if (current.mobile_shards) {
       if (!current.prices) return [];
       const compact = await shard("prices", symbol, current.mobile_shards,
-        current.generated_at, priceShards);
+        current.bundle_built_at ?? current.generated_at, priceShards);
       return (compact[symbol] ?? []).map(([date, close, source]) => ({
         date, open: null, high: null, low: null, close, adj_close: null, volume: null, source,
       }));

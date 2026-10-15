@@ -96,6 +96,7 @@ export interface PriceManifest {
 export interface SiteManifest {
   schema: number;
   bundle_version?: number;
+  bundle_built_at?: number;
   mobile_shards?: number;
   generated_at: number;
   universe_rows: number;
