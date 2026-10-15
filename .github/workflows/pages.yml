@@ -40,6 +40,7 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install duckdb==1.5.6 exchange_calendars==4.13.2
       - run: npm --prefix ui ci --no-audit --no-fund
+      - run: npm --prefix ui test -- --run
       - run: python -m unittest discover -s scripts -p test_paper_portfolio.py
       - name: Prepare Pages base path
         shell: bash
