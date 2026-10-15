@@ -1,4 +1,5 @@
 import type { PriceBar } from "./data/types";
+import { expectedCloseDate } from "./market-date";
 
 export type HorizonSignal = "supported" | "mixed" | "insufficient";
 
@@ -36,7 +37,7 @@ export function shortHorizon(bars: PriceBar[], now = new Date()): HorizonResult 
   const last = valid.at(-1);
   const asof = last?.date ?? null;
   const age = asof ? ageDays(asof, now) : null;
-  if (age === null || age < 0 || age > 7) {
+  if (age === null || age < 0 || age > 7 || (asof !== null && asof < expectedCloseDate(now))) {
     return { signal: "insufficient", label: "暂不判断", window, asof,
       reasons: [asof ? `收盘价停留在 ${asof}，不足以判断当前短线状态` : "暂无可用收盘价"] };
   }

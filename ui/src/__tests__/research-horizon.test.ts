@@ -19,6 +19,8 @@ describe("research horizon", () => {
     expect(result.signal).toBe("supported");
     expect(result.asof).toBe("2026-10-09");
     expect(result.reasons).toHaveLength(3);
+    expect(shortHorizon(bars(65), new Date("2026-10-15T12:00:00Z")).signal).toBe("insufficient");
+    expect(shortHorizon(bars(65), new Date("2026-10-15T12:00:00Z")).reasons[0]).toContain("不足以判断当前短线状态");
     expect(shortHorizon(bars(65, "2026-09-11"), NOW).signal).toBe("insufficient");
     expect(shortHorizon(bars(30), NOW).signal).toBe("insufficient");
     expect(shortHorizon(bars(65, "2026-10-09", false), NOW).signal).toBe("mixed");
