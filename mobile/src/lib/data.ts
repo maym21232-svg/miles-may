@@ -136,6 +136,15 @@ export function expectedCloseDate(now = new Date()): string {
   return day.toISOString().slice(0, 10);
 }
 
+export function requiredCloseDate(paper: PaperPortfolio, now = new Date()): string | null {
+  if (paper.next_session_date == null && paper.next_close_at == null) return expectedCloseDate(now);
+  const close = Date.parse(paper.next_close_at ?? '');
+  if (!Number.isFinite(close) || !/^\d{4}-\d{2}-\d{2}$/.test(paper.next_session_date ?? '') ||
+      new Date(close).toISOString().slice(0, 10) !== paper.next_session_date ||
+      paper.next_session_date! <= paper.expected_date) return null;
+  return now.getTime() >= close ? paper.next_session_date! : paper.expected_date;
+}
+
 export function isPaperCurrent(paper: PaperPortfolio, now = new Date()): boolean {
   const age = now.getTime() - Date.parse(paper.generated_at);
   return paper.status === 'ready'
@@ -143,7 +152,7 @@ export function isPaperCurrent(paper: PaperPortfolio, now = new Date()): boolean
     && paper.coverage >= 0.95
     && paper.coverage <= 1
     && paper.data_date === paper.expected_date
-    && paper.data_date === expectedCloseDate(now)
+    && paper.data_date === requiredCloseDate(paper, now)
     && Number.isFinite(age)
     && age >= -5 * 60_000
     && age < 36 * 60 * 60_000;
@@ -157,7 +166,8 @@ export function isShortBoardCurrent(data: ResearchData, now = new Date()): boole
 
 export function paperPauseMessage(data: ResearchData, now = new Date()): string {
   if (data.source === 'cache') return '当前离线，显示上次保存的数据；模拟买卖暂停。';
-  const expected = expectedCloseDate(now);
+  const expected = requiredCloseDate(data.paper, now);
+  if (!expected) return '报告的交易日历无效，模拟买卖暂停。';
   if (data.paper.data_date !== expected) {
     return `等待 ${expected} 的行情（目前 ${data.paper.data_date || '未知'}），模拟买卖暂停。`;
   }

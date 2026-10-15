@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { currentShortCandidates, expectedCloseDate, fetchJson, isCompanyDetail, isPaperCurrent, isShortBoardCurrent, loadCompanyDetail, loadPriceHistory, loadUniverse, money, paperEquity, paperPauseMessage, percent, sectorName } from '../src/lib/data.ts';
+import { currentShortCandidates, expectedCloseDate, fetchJson, isCompanyDetail, isPaperCurrent, isShortBoardCurrent, loadCompanyDetail, loadPriceHistory, loadUniverse, money, paperEquity, paperPauseMessage, percent, requiredCloseDate, sectorName } from '../src/lib/data.ts';
 import { financialNotes } from '../src/lib/finance.ts';
 
 function report(overrides = {}) {
@@ -36,6 +36,20 @@ test('pauses decisions after the calendar rolls to the next trading date', () =>
   const monday = new Date('2026-10-12T12:00:00Z');
   assert.equal(isPaperCurrent(report({ generated_at: monday.toISOString(), data_date: '2026-10-09', expected_date: '2026-10-09' }), monday), true);
   assert.equal(isPaperCurrent(report({ generated_at: monday.toISOString(), data_date: '2026-10-09', expected_date: '2026-10-09' }), new Date('2026-10-13T00:00:00Z')), false);
+});
+
+test('uses exchange-provided next close through holidays and early closes', () => {
+  const paper = report({
+    generated_at: '2026-11-27T12:00:00Z', data_date: '2026-11-25', expected_date: '2026-11-25',
+    next_session_date: '2026-11-27', next_close_at: '2026-11-27T18:00:00+00:00',
+  });
+  const before = new Date('2026-11-27T17:59:00Z');
+  const after = new Date('2026-11-27T18:00:00Z');
+  assert.equal(requiredCloseDate(paper, before), '2026-11-25');
+  assert.equal(isPaperCurrent(paper, before), true);
+  assert.equal(requiredCloseDate(paper, after), '2026-11-27');
+  assert.equal(isPaperCurrent(paper, after), false);
+  assert.equal(requiredCloseDate({ ...paper, next_close_at: 'invalid' }, before), null);
 });
 
 test('translates known sectors without inventing unknown ones', () => {

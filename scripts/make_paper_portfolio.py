@@ -9,6 +9,7 @@ import math
 from pathlib import Path
 
 import duckdb
+import exchange_calendars
 
 
 STARTING_CASH = 100_000.0
@@ -22,6 +23,16 @@ def previous_weekday(today: date) -> date:
     while day.weekday() >= 5:
         day -= timedelta(days=1)
     return day
+
+
+def session_gate(today: date) -> tuple[str, str, str]:
+    calendar = exchange_calendars.get_calendar(
+        "XNYS", start=today - timedelta(days=30), end=today + timedelta(days=30)
+    )
+    expected = calendar.date_to_session(today - timedelta(days=1), direction="previous")
+    next_session = calendar.next_session(expected)
+    return (expected.date().isoformat(), next_session.date().isoformat(),
+            calendar.session_close(next_session).isoformat())
 
 
 def empty_ledger() -> dict:
@@ -218,11 +229,11 @@ def run(data_dir: Path, ledger_path: Path, output: Path, today: date) -> dict:
     price_date = prices.get("typical_date")
     symbols = prices.get("symbols") or 0
     coverage = (prices.get("typical_symbols") or 0) / symbols if symbols else 0
-    expected = previous_weekday(today).isoformat()
+    expected, next_session_date, next_close_at = session_gate(today)
     ledger = load_ledger(ledger_path)
     if not price_date or price_date != expected or coverage < 0.95:
         status = "paused"
-        reason = f"行情未覆盖最近一个工作日（预期 {expected}，实际 {price_date or '未知'}）" if price_date != expected else "当日行情覆盖不足 95%"
+        reason = f"行情未覆盖最近一个交易日（预期 {expected}，实际 {price_date or '未知'}）" if price_date != expected else "当日行情覆盖不足 95%"
         rows = {}
     else:
         rows = price_rows(data_dir)
@@ -239,6 +250,7 @@ def run(data_dir: Path, ledger_path: Path, output: Path, today: date) -> dict:
         "version": 1, "status": status, "reason": reason,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "data_date": price_date, "expected_date": expected,
+        "next_session_date": next_session_date, "next_close_at": next_close_at,
         "coverage": round(coverage, 4), "starting_cash": ledger["starting_cash"],
         "cash": ledger["cash"], "positions": positions,
         "pending": ledger["pending"] if status == "ready" else [], "fills": ledger["fills"][-20:],

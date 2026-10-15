@@ -5,16 +5,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Building2 } from "lucide-react";
 import { manifest, type SiteManifest } from "../data";
-import { expectedCloseDate } from "./PaperDesk";
+import { expectedCloseDate, requiredCloseDate, type PaperReport } from "./PaperDesk";
 
-export function broadPriceStale(prices: SiteManifest["prices"], now = new Date()): boolean {
-  return !!prices?.typical_date && prices.typical_date < expectedCloseDate(now) &&
+export function broadPriceStale(prices: SiteManifest["prices"], now = new Date(), report: PaperReport | null = null): boolean {
+  const required = report ? requiredCloseDate(report, now) : expectedCloseDate(now);
+  return !!prices?.typical_date && prices.typical_date < (required ?? expectedCloseDate(now)) &&
     (prices.typical_symbols ?? 0) > prices.symbols / 2;
 }
 
-export function CoverageBanner() {
+export function CoverageBanner({ report = null }: { report?: PaperReport | null }) {
   const [data, setData] = useState<SiteManifest | null | "loading">("loading");
   const [newer, setNewer] = useState(false);
+  const [now, setNow] = useState(() => new Date());
   const loadedVersion = useRef<{ generated: number; priceDate: string | null; bundle: number } | null>(null);
 
   useEffect(() => {
@@ -40,8 +42,8 @@ export function CoverageBanner() {
       if (active && loadedVersion.current === null) setData(null);
     });
     void check();
-    const interval = window.setInterval(check, 60_000);
-    const onVisible = () => { if (document.visibilityState === "visible") void check(); };
+    const interval = window.setInterval(() => { setNow(new Date()); void check(); }, 60_000);
+    const onVisible = () => { if (document.visibilityState === "visible") { setNow(new Date()); void check(); } };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       active = false;
@@ -63,8 +65,8 @@ export function CoverageBanner() {
   const refreshed = new Date(data.generated_at * 1000).toLocaleString("zh-CN", {
     timeZone: "Asia/Shanghai", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit",
   });
-  const stale = Date.now() - data.generated_at * 1000 > 4 * 24 * 60 * 60 * 1000;
-  const stalePrices = broadPriceStale(data.prices);
+  const stale = now.getTime() - data.generated_at * 1000 > 4 * 24 * 60 * 60 * 1000;
+  const stalePrices = broadPriceStale(data.prices, now, report);
   return (
     <div className="coverage-banner" role="note">
       <details className="coverage-details">

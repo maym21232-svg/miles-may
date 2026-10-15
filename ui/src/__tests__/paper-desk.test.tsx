@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PaperDesk, expectedCloseDate, type PaperReport } from "../components/PaperDesk";
+import { PaperDesk, expectedCloseDate, paperPaused, requiredCloseDate, type PaperReport } from "../components/PaperDesk";
 
 const report: PaperReport = {
   version: 1, status: "ready", reason: null, generated_at: "2026-10-13T10:00:00Z", data_date: "2026-10-12",
@@ -102,6 +102,21 @@ describe("paper desk", () => {
     expect(expectedCloseDate(new Date("2026-10-12T20:00:00Z"))).toBe("2026-10-12");
     expect(expectedCloseDate(new Date("2026-01-12T20:59:00Z"))).toBe("2026-01-09");
     expect(expectedCloseDate(new Date("2026-01-12T21:00:00Z"))).toBe("2026-01-12");
+  });
+
+  it("keeps the last close valid through a holiday and pauses at the early close", () => {
+    const holidayReport: PaperReport = {
+      ...report, generated_at: "2026-11-27T12:00:00Z", data_date: "2026-11-25",
+      expected_date: "2026-11-25", next_session_date: "2026-11-27",
+      next_close_at: "2026-11-27T18:00:00+00:00",
+    };
+    const before = new Date("2026-11-27T17:59:00Z");
+    const after = new Date("2026-11-27T18:00:00Z");
+    expect(requiredCloseDate(holidayReport, before)).toBe("2026-11-25");
+    expect(paperPaused(holidayReport, before)).toBe(false);
+    expect(requiredCloseDate(holidayReport, after)).toBe("2026-11-27");
+    expect(paperPaused(holidayReport, after)).toBe(true);
+    expect(requiredCloseDate({ ...holidayReport, next_close_at: "invalid" }, before)).toBeNull();
   });
 
   it("enables a moving strip only when at least four orders exist", () => {

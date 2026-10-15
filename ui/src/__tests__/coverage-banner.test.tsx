@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CoverageBanner, broadPriceStale } from "../components/CoverageBanner";
+import type { PaperReport } from "../components/PaperDesk";
 
 const first = {
   schema: 2, generated_at: 1791695737, universe_rows: 6407,
@@ -63,6 +64,15 @@ describe("CoverageBanner", () => {
     expect(broadPriceStale(prices, new Date("2026-10-11T12:00:00Z"))).toBe(false);
     expect(broadPriceStale(prices, new Date("2026-10-12T20:00:00Z"))).toBe(true);
     expect(broadPriceStale({ ...prices, typical_symbols: 100 }, new Date("2026-10-12T20:00:00Z"))).toBe(false);
+  });
+
+  it("does not call holiday prices stale before the next exchange close", () => {
+    const prices = { ...updated.prices!, typical_date: "2026-11-25", typical_symbols: 5100 };
+    const report = { expected_date: "2026-11-25", next_session_date: "2026-11-27",
+      next_close_at: "2026-11-27T18:00:00+00:00" } as PaperReport;
+    expect(broadPriceStale(prices, new Date("2026-11-26T21:00:00Z"), report)).toBe(false);
+    expect(broadPriceStale(prices, new Date("2026-11-27T17:59:00Z"), report)).toBe(false);
+    expect(broadPriceStale(prices, new Date("2026-11-27T18:00:00Z"), report)).toBe(true);
   });
 
   it("offers reload when prices advance without a new financial snapshot", async () => {

@@ -51,6 +51,8 @@ export type PaperPortfolio = {
   generated_at: string;
   data_date: string;
   expected_date: string;
+  next_session_date?: string;
+  next_close_at?: string;
   coverage: number;
   cash: number;
   starting_cash?: number;

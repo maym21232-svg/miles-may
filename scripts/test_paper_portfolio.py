@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
-from make_paper_portfolio import advance, empty_ledger, fill_pending, previous_weekday, run
+from make_paper_portfolio import advance, empty_ledger, fill_pending, previous_weekday, run, session_gate
 
 
 def row(day: str, close=100.0, opening=99.0, previous=None):
@@ -24,6 +24,11 @@ def row(day: str, close=100.0, opening=99.0, previous=None):
 
 
 class PaperPortfolioTest(unittest.TestCase):
+    def test_exchange_calendar_skips_holidays_and_tracks_early_close(self):
+        self.assertEqual(session_gate(date(2026, 11, 27)),
+                         ("2026-11-25", "2026-11-27", "2026-11-27T18:00:00+00:00"))
+        self.assertEqual(session_gate(date(2026, 10, 13))[0], "2026-10-12")
+
     def test_fresh_decision_only_once_and_next_open_fill(self):
         ledger = empty_ledger()
         advance(ledger, {"TEST": row("2026-10-12")}, "2026-10-12")
@@ -87,6 +92,18 @@ class PaperPortfolioTest(unittest.TestCase):
             self.assertEqual(len(first["pending"]), 1)
             self.assertEqual(len(second["decisions"]), 1)
             self.assertEqual(len(json.loads(ledger_path.read_text(encoding="utf-8"))["decisions"]), 1)
+
+    def test_holiday_build_accepts_the_last_session_without_inventing_a_close(self):
+        with TemporaryDirectory() as root:
+            base = Path(root)
+            (base / "manifest.json").write_text(json.dumps({"prices": {
+                "typical_date": "2026-11-25", "symbols": 100, "typical_symbols": 99,
+            }}), encoding="utf-8")
+            with patch("make_paper_portfolio.price_rows", return_value={"TEST": row("2026-11-25")}):
+                report = run(base, base / "ledger.json", base / "report.json", date(2026, 11, 27))
+            self.assertEqual(report["status"], "ready")
+            self.assertEqual(report["expected_date"], "2026-11-25")
+            self.assertEqual(report["next_close_at"], "2026-11-27T18:00:00+00:00")
 
     def test_stale_data_freezes_ledger(self):
         with TemporaryDirectory() as root:

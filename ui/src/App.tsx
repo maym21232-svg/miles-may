@@ -402,11 +402,11 @@ export default function App() {
         />
       </header>
 
-      {STATIC_MODE && !showBoard && <CoverageBanner />}
+      {STATIC_MODE && !showBoard && <CoverageBanner report={paper} />}
 
       {showBoard && (board ? (
         <HorizonBoard board={board}
-          overview={<CoverageBanner />}
+          overview={<CoverageBanner report={paper} />}
           paper={paper} paperError={paperError} onPaperRetry={loadPaper}
           onSelect={(symbol) => navigate({ view: "screener", company: symbol, q: null, sort: null })}
           onAdvanced={() => {

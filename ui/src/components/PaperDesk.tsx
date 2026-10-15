@@ -28,6 +28,8 @@ export interface PaperReport {
   generated_at: string;
   data_date: string | null;
   expected_date: string;
+  next_session_date?: string;
+  next_close_at?: string;
   coverage: number;
   cash: number;
   starting_cash: number;
@@ -57,13 +59,24 @@ export function expectedCloseDate(now = new Date()): string {
   return day.toISOString().slice(0, 10);
 }
 
+export function requiredCloseDate(report: PaperReport | null, now = new Date()): string | null {
+  if (!report || (report.next_session_date == null && report.next_close_at == null)) {
+    return expectedCloseDate(now);
+  }
+  const close = Date.parse(report.next_close_at ?? "");
+  if (!Number.isFinite(close) || !/^\d{4}-\d{2}-\d{2}$/.test(report.next_session_date ?? "") ||
+      new Date(close).toISOString().slice(0, 10) !== report.next_session_date ||
+      report.next_session_date! <= report.expected_date) return null;
+  return now.getTime() >= close ? report.next_session_date! : report.expected_date;
+}
+
 export function paperPaused(report: PaperReport | null, now = new Date()): boolean {
   if (!report) return false;
   const age = now.getTime() - Date.parse(report.generated_at);
   return report.status !== "ready" || !Number.isFinite(report.coverage) ||
     report.coverage < 0.95 || report.coverage > 1 ||
     report.data_date !== report.expected_date ||
-    report.data_date !== expectedCloseDate(now) || !Number.isFinite(age) ||
+    report.data_date !== requiredCloseDate(report, now) || !Number.isFinite(age) ||
     age < -5 * 60_000 || age >= 36 * 60 * 60_000;
 }
 
@@ -137,7 +150,8 @@ export function PaperDesk({ report, error = false, onSelect, onRetry, showHeadin
   now?: Date;
 }) {
   const paused = paperPaused(report, now);
-  const staleOnDevice = !!report && report.data_date !== expectedCloseDate(now);
+  const requiredDate = requiredCloseDate(report, now);
+  const staleOnDevice = !!report && !!requiredDate && report.data_date !== requiredDate;
   const pending = paused ? [] : report?.pending ?? [];
   const valued = !!report && !paused && Number.isFinite(report.cash) && report.cash >= 0 &&
     Number.isFinite(report.starting_cash) && report.starting_cash > 0 &&
@@ -150,7 +164,8 @@ export function PaperDesk({ report, error = false, onSelect, onRetry, showHeadin
   const empty = error ? "数据暂不可用" : !report ? "正在读取模拟记录…"
     : paused ? "等待有效行情" : "本轮暂无符合条件的决定";
   const warning = staleOnDevice
-    ? `等待 ${expectedCloseDate(now)} 的行情（目前 ${report?.data_date || "未知"}），模拟买卖暂停。`
+    ? `等待 ${requiredDate} 的行情（目前 ${report?.data_date || "未知"}），模拟买卖暂停。`
+    : report && !requiredDate ? "报告的交易日历无效，模拟买卖暂停。"
     : report && (!Number.isFinite(report.coverage) || report.coverage < 0.95 || report.coverage > 1)
       ? "当日行情覆盖率未通过校验（要求至少 95%），模拟买卖暂停。"
     : report?.data_date !== report?.expected_date
