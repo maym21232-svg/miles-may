@@ -17,7 +17,7 @@ export function CoverageBanner({ report = null }: { report?: PaperReport | null 
   const [data, setData] = useState<SiteManifest | null | "loading">("loading");
   const [newer, setNewer] = useState(false);
   const [now, setNow] = useState(() => new Date());
-  const loadedVersion = useRef<{ generated: number; priceDate: string | null; bundle: number } | null>(null);
+  const loadedVersion = useRef<{ generated: number; priceDate: string | null; bundle: number; built: number } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -29,10 +29,12 @@ export function CoverageBanner({ report = null }: { report?: PaperReport | null 
       }
       if (loadedVersion.current === null) {
         loadedVersion.current = {
-          generated: next.generated_at, priceDate: next.prices?.max_date ?? null, bundle: next.bundle_version ?? 0,
+          generated: next.generated_at, priceDate: next.prices?.max_date ?? null,
+          bundle: next.bundle_version ?? 0, built: next.bundle_built_at ?? 0,
         };
         setData(next);
-      } else if ((next.bundle_version ?? 0) > loadedVersion.current.bundle ||
+      } else if ((next.bundle_built_at ?? 0) > loadedVersion.current.built ||
+          (next.bundle_version ?? 0) > loadedVersion.current.bundle ||
           next.generated_at > loadedVersion.current.generated ||
           (next.generated_at === loadedVersion.current.generated &&
             (next.prices?.max_date ?? "") > (loadedVersion.current.priceDate ?? ""))) {

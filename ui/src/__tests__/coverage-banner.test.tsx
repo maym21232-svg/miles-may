@@ -95,4 +95,14 @@ describe("CoverageBanner", () => {
     fireEvent(document, new Event("visibilitychange"));
     await waitFor(() => expect(screen.getByRole("button", { name: "有新数据，刷新页面" })).toBeInTheDocument());
   });
+
+  it("offers reload when the published bundle changes but source dates do not", async () => {
+    manifestMock.mockResolvedValueOnce({ ...first, bundle_built_at: 100 })
+      .mockResolvedValue({ ...first, bundle_built_at: 200 });
+    render(<CoverageBanner />);
+    await screen.findByText(/快照生成/);
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    fireEvent(document, new Event("visibilitychange"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "有新数据，刷新页面" })).toBeInTheDocument());
+  });
 });
