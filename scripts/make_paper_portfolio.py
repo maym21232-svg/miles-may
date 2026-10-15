@@ -150,10 +150,16 @@ def fill_pending(ledger: dict, rows: dict[str, dict], price_date: str) -> None:
     ledger["pending"] = []
     if not pending:
         return
+    trading_day = date.fromisoformat(price_date)
+    calendar = exchange_calendars.get_calendar(
+        "XNYS", start=trading_day - timedelta(days=30), end=trading_day + timedelta(days=1)
+    )
+    prior_session = calendar.previous_session(trading_day).date().isoformat()
     positions = {item["symbol"]: item for item in ledger["positions"]}
     for order in sorted(pending, key=lambda item: item["side"] != "sell"):
         row = rows.get(order["symbol"])
-        if (not row or order["decision_date"] != str(row.get("previous_price_date"))
+        if (not row or order["decision_date"] != prior_session
+                or order["decision_date"] != str(row.get("previous_price_date"))
                 or str(row["price_date"]) != price_date):
             continue
         opening = row["open"]

@@ -66,9 +66,20 @@ class PaperPortfolioTest(unittest.TestCase):
     def test_missing_intermediate_trading_bar_never_backfills_order(self):
         ledger = empty_ledger()
         advance(ledger, {"TEST": row("2026-10-12")}, "2026-10-12")
-        advance(ledger, {"TEST": row("2026-10-14", previous=date(2026, 10, 13))}, "2026-10-14")
+        advance(ledger, {"TEST": row("2026-10-14", previous=date(2026, 10, 12))}, "2026-10-14")
         self.assertEqual(ledger["positions"], [])
         self.assertEqual(ledger["fills"], [])
+
+    def test_missing_intermediate_bar_never_backfills_sell(self):
+        ledger = empty_ledger()
+        ledger["positions"] = [{"symbol": "TEST", "name": "Test Company", "sector": "Industrials",
+                                "shares": 100, "entry_price": 100, "entry_date": "2026-10-09"}]
+        ledger["pending"] = [{"side": "sell", "symbol": "TEST", "decision_date": "2026-10-12",
+                              "reference_close": 100}]
+        fill_pending(ledger, {"TEST": row("2026-10-14", previous=date(2026, 10, 12))}, "2026-10-14")
+        self.assertEqual(len(ledger["positions"]), 1)
+        self.assertEqual(ledger["fills"], [])
+        self.assertEqual(ledger["pending"], [])
 
     def test_large_opening_gap_cancels_buy(self):
         ledger = empty_ledger()
