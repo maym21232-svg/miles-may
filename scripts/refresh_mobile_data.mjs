@@ -192,6 +192,7 @@ async function runRefresh({ origin, force, check }) {
     if (result.status !== 0) throw new Error(result.stderr || `数据生成失败：${result.status}`);
     const built = JSON.parse(await readFile(join(output, "manifest.json"), "utf8"));
     if (built.bundle_version !== BUNDLE_VERSION || built.generated_at !== remote.generated_at ||
+        !Number.isFinite(built.bundle_built_at) || built.bundle_built_at <= 0 ||
         built.snapshot_symbols < 1000 ||
         built.mobile_shards !== 256 ||
         (remote.prices?.shards?.length && !built.prices?.bars)) {

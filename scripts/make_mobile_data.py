@@ -108,6 +108,7 @@ if price_sources:
         "bundle_version": 4,
         "mobile_shards": MOBILE_SHARDS,
         "generated_at": generated,
+        "bundle_built_at": time.time(),
         "universe_rows": symbols,
         "snapshot_rows": period_rows,
         "snapshot_symbols": symbols,

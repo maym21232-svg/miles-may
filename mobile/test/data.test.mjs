@@ -141,6 +141,26 @@ test('loads price bars from the matching shard and rejects invalid prices', asyn
   }
 });
 
+test('refreshes price shards when only the published bundle changes', async () => {
+  const originalFetch = globalThis.fetch;
+  const urls = [];
+  let builtAt = 111;
+  globalThis.fetch = async (url) => {
+    urls.push(String(url));
+    if (String(url).includes('manifest.json')) return { ok: true, json: async () => ({ mobile_shards: 256, generated_at: 12345, bundle_built_at: builtAt }) };
+    return { ok: true, json: async () => ({ A: [['2026-10-09', builtAt, 'source']] }) };
+  };
+  try {
+    assert.equal((await loadPriceHistory('A'))[0].close, 111);
+    builtAt = 222;
+    assert.equal((await loadPriceHistory('A'))[0].close, 222);
+    assert.match(urls[1], /prices-065\.json\?v=111$/);
+    assert.match(urls[3], /prices-065\.json\?v=222$/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('ignores malformed company-directory rows', async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => ({ ok: true, json: async () => [null, { symbol: 'A', name: 'Agilent' }] });

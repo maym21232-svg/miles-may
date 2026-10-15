@@ -101,14 +101,14 @@ export function isCompanyDetail(value: unknown, symbol: string): value is Compan
 }
 
 export async function loadPriceHistory(symbol: string): Promise<PriceBar[]> {
-  const manifest = await readJson<{ mobile_shards?: number; generated_at: number }>('manifest.json');
+  const manifest = await readJson<{ mobile_shards?: number; generated_at: number; bundle_built_at?: number }>('manifest.json');
   if (!Number.isInteger(manifest.mobile_shards) || !manifest.mobile_shards || manifest.mobile_shards > 1024) return [];
   const number = shardNumber(symbol, manifest.mobile_shards);
-  const key = `${manifest.generated_at}-${number}`;
+  const key = `${manifest.bundle_built_at ?? manifest.generated_at}-${number}`;
   let request = priceShards.get(key);
   if (!request) {
     const name = `prices-${String(number).padStart(3, '0')}.json`;
-    request = fetchJson<Record<string, [string, number, string | null][]>>(`${SITE}data/${name}?v=${manifest.generated_at}`)
+    request = fetchJson<Record<string, [string, number, string | null][]>>(`${SITE}data/${name}?v=${manifest.bundle_built_at ?? manifest.generated_at}`)
       .catch((error) => { priceShards.delete(key); throw error; });
     priceShards.set(key, request);
     if (priceShards.size > 12) {
