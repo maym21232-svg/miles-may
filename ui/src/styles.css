@@ -1488,6 +1488,9 @@ table.results .symlink:hover {
 .watchlist-heading { display: flex; align-items: baseline; gap: 12px; border-bottom: 1px solid color-mix(in srgb, var(--color-muted) 22%, transparent); }
 .watchlist-heading h1 { margin: 0 0 14px; font-size: 18px; }
 .watchlist-heading span, .watchlist-storage, .watchlist-empty { color: var(--color-muted); font-size: 12px; }
+.watchlist-backup-actions { display: flex; gap: 12px; margin-left: auto; }
+.watchlist-backup-actions button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; color: var(--color-primary); font-size: 13px; cursor: pointer; }
+.watchlist-backup-message { color: var(--color-muted); font-size: 12px; line-height: 1.5; }
 .watchlist-empty { margin: 22px 0; line-height: 1.7; }
 .watchlist-items { list-style: none; margin: 0; padding: 0; }
 .watchlist-items li { display: flex; align-items: center; gap: 12px; min-height: 62px; border-bottom: 1px solid color-mix(in srgb, var(--color-muted) 22%, transparent); }
@@ -1610,6 +1613,8 @@ table.results .symlink { font-size: 13px; font-weight: 700; }
 .status-facts > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; padding: 15px 0; border-bottom: 1px solid color-mix(in srgb, var(--color-muted) 20%, transparent); }
 .status-facts dt { color: var(--color-muted); }
 .status-facts dd { margin: 0; overflow-wrap: anywhere; }
+.status-load-error { display: flex; align-items: center; gap: 12px; color: #a3462b; }
+.status-load-error button { border: 1px solid currentColor; border-radius: 4px; padding: 5px 10px; background: transparent; color: inherit; cursor: pointer; }
 .status-note p { margin: 0; color: var(--color-muted); line-height: 1.7; }
 .simple-status .view-body { padding: 0; }
 

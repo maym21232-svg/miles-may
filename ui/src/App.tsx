@@ -8,7 +8,7 @@
 // current query (all pages) via /api/screen.csv.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Compass, FileText, Settings2, Star } from "lucide-react";
+import { Compass, Download, FileText, Settings2, Star, Upload } from "lucide-react";
 import QUICK_SCREENS from "./quick-screens.json";
 import {
   DslApiError,
@@ -38,6 +38,8 @@ import { StaticStatusView } from "./components/StaticStatusView";
 import { isHiddenField } from "./data/field-catalog";
 import { fieldsInQuery } from "./dsl/fields";
 import { pushQueryHistory } from "./query-history";
+import { createResearchBackup, mergeWatchlists, parseResearchBackup } from "./research-backup";
+import { loadResearchNote, saveResearchNote } from "./research-notes";
 import { hashFor, parseHash, useHashRoute } from "./router";
 import {
   applyTheme,
@@ -115,11 +117,13 @@ export default function App() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [watchlist, setWatchlist] = useState<WatchItem[]>(loadWatchlist);
   const [watchlistError, setWatchlistError] = useState("");
+  const [backupMessage, setBackupMessage] = useState("");
   const [board, setBoard] = useState<HorizonBoardData | null>(null);
   const [boardError, setBoardError] = useState(false);
   const [paper, setPaper] = useState<PaperReport | null>(null);
   const [paperError, setPaperError] = useState(false);
   const queryInputRef = useRef<HTMLInputElement>(null);
+  const backupInputRef = useRef<HTMLInputElement>(null);
   const routedScreenRef = useRef<string | null>(null);
 
   const loadBoard = () => {
@@ -192,6 +196,38 @@ export default function App() {
     changeWatchlist(watchlist.some((item) => item.symbol === symbol)
       ? watchlist.filter((item) => item.symbol !== symbol)
       : [{ symbol, name }, ...watchlist]);
+  };
+
+  const exportResearch = () => {
+    const blob = new Blob([JSON.stringify(createResearchBackup(watchlist), null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `美股研究备份-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    setBackupMessage("备份已下载，请妥善保存，其中可能包含你的研究笔记。");
+  };
+
+  const importResearch = async (file: File) => {
+    try {
+      if (file.size > 5_000_000) throw new Error("文件超过 5 MB");
+      const backup = parseResearchBackup(await file.text());
+      const merged = mergeWatchlists(watchlist, backup.watchlist);
+      if (!saveWatchlist(merged)) throw new Error("本机存储不可用");
+      let restored = 0;
+      let failed = 0;
+      for (const [symbol, note] of Object.entries(backup.notes)) {
+        if (loadResearchNote(symbol)) continue;
+        if (saveResearchNote(symbol, note)) restored += 1;
+        else failed += 1;
+      }
+      setWatchlist(merged);
+      setBackupMessage(`已新增 ${merged.length - watchlist.length} 家自选、${restored} 条笔记。${failed ? `${failed} 条笔记保存失败。` : ""}`);
+      setWatchlistError("");
+    } catch (error) {
+      setBackupMessage(`导入失败：${error instanceof Error ? error.message : "文件无法读取"}`);
+    }
   };
 
   useEffect(() => watchSystemTheme(() => setSystemLight(prefersLight())), []);
@@ -555,8 +591,19 @@ export default function App() {
           <div className="watchlist-heading">
             <h1>自选公司</h1>
             <span>{watchlist.length} 家</span>
+            <div className="watchlist-backup-actions">
+              <button type="button" onClick={exportResearch} title="导出自选和笔记"><Download size={17} aria-hidden="true" />导出</button>
+              <button type="button" onClick={() => backupInputRef.current?.click()} title="导入自选和笔记"><Upload size={17} aria-hidden="true" />导入</button>
+              <input ref={backupInputRef} type="file" accept=".json,application/json" aria-label="选择研究备份文件" hidden
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void importResearch(file);
+                  event.target.value = "";
+                }} />
+            </div>
           </div>
           {watchlistError && <p role="alert">{watchlistError}</p>}
+          {backupMessage && <p className="watchlist-backup-message" role="status">{backupMessage}</p>}
           {watchlist.length === 0 ? (
             <p className="watchlist-empty">暂无自选公司。在选股结果或搜索中打开公司，即可加入自选。</p>
           ) : (
