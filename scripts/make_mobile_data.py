@@ -173,11 +173,12 @@ focus_candidates = records(
     "SELECT symbol, name, sector, period, market_cap, piotroski_f, "
     "return_on_equity, free_cash_flow, quality_rank FROM " + latest + " WHERE "
     f"exchange IN {EXCHANGES} AND market_cap >= 1000000000 "
-    "AND piotroski_f >= 5 AND return_on_equity BETWEEN 0.001 AND 10 "
-    "AND free_cash_flow IS NOT NULL AND quality_rank IS NOT NULL "
+    "AND piotroski_f >= 4 AND return_on_equity BETWEEN 0.001 AND 10 "
     "AND try_cast(CASE WHEN length(period) = 4 THEN period || '-12-31' "
     "ELSE period END AS DATE) BETWEEN CURRENT_DATE - INTERVAL 455 DAY AND CURRENT_DATE "
-    "ORDER BY piotroski_f DESC, quality_rank DESC, market_cap DESC, symbol"
+    "ORDER BY CASE WHEN piotroski_f >= 5 AND free_cash_flow IS NOT NULL "
+    "AND quality_rank IS NOT NULL THEN 0 ELSE 1 END, "
+    "piotroski_f DESC, quality_rank DESC NULLS LAST, market_cap DESC, symbol"
 )
 focus = balanced_limit(focus_candidates, FOCUS_TARGET, 70)
 focus_symbols = {row["symbol"] for row in focus}
