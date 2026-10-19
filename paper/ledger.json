@@ -2,9 +2,34 @@
   "version": 1,
   "starting_cash": 100000.0,
   "cash": 100000.0,
-  "last_price_date": null,
+  "last_price_date": "2026-10-16",
   "positions": [],
-  "pending": [],
-  "decisions": [],
+  "pending": [
+    {
+      "side": "buy",
+      "symbol": "CNQ",
+      "name": "Canadian Natural Resources Limited",
+      "sector": "Energy",
+      "reason": "财务质量 7/9；20日趋势 +8.4%、60日 +14.4%；放量但未追涨",
+      "reference_close": 53.8,
+      "decision_date": "2026-10-16"
+    }
+  ],
+  "decisions": [
+    {
+      "date": "2026-10-16",
+      "orders": [
+        {
+          "side": "buy",
+          "symbol": "CNQ",
+          "name": "Canadian Natural Resources Limited",
+          "sector": "Energy",
+          "reason": "财务质量 7/9；20日趋势 +8.4%、60日 +14.4%；放量但未追涨",
+          "reference_close": 53.8,
+          "decision_date": "2026-10-16"
+        }
+      ]
+    }
+  ],
   "fills": []
 }
