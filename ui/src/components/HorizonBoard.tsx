@@ -20,6 +20,10 @@ export interface HorizonCandidate {
 export interface HorizonBoardData {
   generated_at: number;
   prices_typical_date: string | null;
+  focus_count?: number;
+  focus_target?: number;
+  short_target?: number;
+  short_count?: number;
   long: HorizonCandidate[];
   short: HorizonCandidate[];
 }
@@ -101,7 +105,9 @@ export function HorizonBoard({ board, onSelect, onAdvanced, paper, paperError, o
       <div className="board-heading">
         <div>
           <h1>发现公司</h1>
-          <p>按研究周期与行业浏览</p>
+          <p>{board.focus_count
+            ? `重点跟踪 ${board.focus_count} 家 · 短线观察 ${board.short_count ?? board.short.length} 家`
+            : "按研究周期与行业浏览"}</p>
         </div>
         <button type="button" className="board-advanced" onClick={onAdvanced}>高级筛选 <ChevronRight size={16} aria-hidden="true" /></button>
       </div>
@@ -111,8 +117,8 @@ export function HorizonBoard({ board, onSelect, onAdvanced, paper, paperError, o
       </div>
       <div className="board-context">
         <p>{horizon === "long"
-          ? "1–3 年研究 · 财务质量、现金流和盈利能力符合条件；每季财报后复核"
-          : "2–6 周观察 · 近 20/60 个交易日趋势符合条件；至少每周复核"}</p>
+          ? "1–3 年研究 · 重点池内财务质量、现金流和盈利能力符合条件；每季财报后复核"
+          : "2–6 周观察 · 短线观察池内近 20/60 个交易日趋势符合条件；至少每周复核"}</p>
         <span>{rows.length} 家候选</span>
       </div>
       <p className="board-caveat">条件筛选不是上涨概率或投资建议。打开公司查看依据、数据日期与风险。</p>

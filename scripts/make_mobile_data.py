@@ -7,6 +7,7 @@ import math
 import time
 
 import duckdb
+from focus_pool import FOCUS_TARGET, SHORT_TARGET, balanced_limit
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -105,7 +106,7 @@ if price_sources:
 (OUTPUT / "manifest.json").write_text(
     json.dumps({
         "schema": 2,
-        "bundle_version": 4,
+        "bundle_version": 5,
         "mobile_shards": MOBILE_SHARDS,
         "generated_at": generated,
         "bundle_built_at": time.time(),
@@ -168,6 +169,26 @@ latest = (
     f"(SELECT * FROM read_parquet('{snapshot}') "
     "QUALIFY row_number() OVER (PARTITION BY symbol ORDER BY period DESC) = 1)"
 )
+focus_candidates = records(
+    "SELECT symbol, name, sector, period, market_cap, piotroski_f, "
+    "return_on_equity, free_cash_flow, quality_rank FROM " + latest + " WHERE "
+    f"exchange IN {EXCHANGES} AND market_cap >= 1000000000 "
+    "AND piotroski_f >= 5 AND return_on_equity BETWEEN 0.001 AND 10 "
+    "AND free_cash_flow IS NOT NULL AND quality_rank IS NOT NULL "
+    "AND try_cast(CASE WHEN length(period) = 4 THEN period || '-12-31' "
+    "ELSE period END AS DATE) BETWEEN CURRENT_DATE - INTERVAL 455 DAY AND CURRENT_DATE "
+    "ORDER BY piotroski_f DESC, quality_rank DESC, market_cap DESC, symbol"
+)
+focus = balanced_limit(focus_candidates, FOCUS_TARGET, 70)
+focus_symbols = {row["symbol"] for row in focus}
+if len(focus) < 300:
+    raise ValueError(f"重点池仅 {len(focus)} 家，低于 300 家最低覆盖要求")
+manifest_path = OUTPUT / "manifest.json"
+mobile_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+mobile_manifest["focus_count"] = len(focus)
+mobile_manifest["focus_target"] = FOCUS_TARGET
+mobile_manifest["short_target"] = SHORT_TARGET
+manifest_path.write_text(json.dumps(mobile_manifest, ensure_ascii=False), encoding="utf-8")
 long_candidates = records(
     "SELECT symbol, name, sector, period, piotroski_f, return_on_equity, "
     "free_cash_flow, debt_to_equity_ratio FROM " + latest + " WHERE "
@@ -178,11 +199,12 @@ long_candidates = records(
     "ELSE period END AS DATE) BETWEEN CURRENT_DATE - INTERVAL 455 DAY AND CURRENT_DATE "
     "ORDER BY sector NULLS LAST, name, symbol"
 )
+long_candidates = [row for row in long_candidates if row["symbol"] in focus_symbols]
 short_candidates = []
 if price_manifest:
     short_candidates = records(
         "WITH valid AS ("
-        f"SELECT symbol, CAST(date AS DATE) AS date, close, "
+        f"SELECT symbol, CAST(date AS DATE) AS date, close, volume, "
         "row_number() OVER (PARTITION BY symbol ORDER BY date DESC) AS rn "
         f"FROM read_parquet('{price_path.as_posix()}') WHERE close > 0 AND isfinite(close)), "
         "windowed AS (SELECT symbol, count(*) AS bars, "
@@ -191,26 +213,35 @@ if price_manifest:
         "max(CASE WHEN rn = 1 THEN close END) AS close, "
         "max(CASE WHEN rn = 21 THEN close END) AS close_20_ago, "
         "max(CASE WHEN rn = 61 THEN close END) AS close_60_ago, "
-        "avg(CASE WHEN rn <= 20 THEN close END) AS average_20 "
+        "avg(CASE WHEN rn <= 20 THEN close END) AS average_20, "
+        "avg(CASE WHEN rn <= 20 THEN close * volume END) AS turnover20 "
         "FROM valid WHERE rn <= 61 GROUP BY symbol) "
-        "SELECT s.symbol, s.name, s.sector, w.price_date, "
+        "SELECT s.symbol, s.name, s.sector, w.price_date, s.piotroski_f, "
         "round(w.close / w.close_20_ago - 1, 6) AS return_20d, "
         "round(w.close / w.close_60_ago - 1, 6) AS return_60d "
         f"FROM windowed w JOIN {latest} s USING (symbol) "
         f"WHERE s.exchange IN {EXCHANGES} AND s.market_cap >= 1000000000 "
-        "AND w.bars >= 61 AND w.price_date BETWEEN CURRENT_DATE - INTERVAL 7 DAY AND CURRENT_DATE "
+        f"AND w.bars >= 61 AND w.price_date = DATE '{price_manifest['typical_date']}' "
         "AND w.oldest_date >= CURRENT_DATE - INTERVAL 150 DAY "
         "AND w.close > w.close_20_ago AND w.close > w.close_60_ago "
-        "AND w.close > w.average_20 "
-        "ORDER BY s.sector NULLS LAST, s.name, s.symbol"
+        "AND w.close > w.average_20 AND w.close >= 5 AND w.turnover20 >= 2000000 "
+        "ORDER BY s.piotroski_f DESC NULLS LAST, return_20d DESC, s.symbol"
     )
+    short_candidates = balanced_limit(short_candidates, SHORT_TARGET, 15)
 (OUTPUT / "horizon-board.json").write_text(
     json.dumps({"generated_at": generated,
                 "prices_typical_date": price_manifest.get("typical_date") if price_manifest else None,
+                "focus_count": len(focus), "focus_target": FOCUS_TARGET,
+                "short_target": SHORT_TARGET, "short_count": len(short_candidates),
                 "long": long_candidates, "short": short_candidates},
                ensure_ascii=False, allow_nan=False, default=str), encoding="utf-8",
 )
-print(f"Board: {len(long_candidates)} long-term, {len(short_candidates)} short-term candidates")
+(OUTPUT / "focus-pool.json").write_text(
+    json.dumps({"generated_at": generated, "target": FOCUS_TARGET,
+                "symbols": sorted(focus_symbols), "short_symbols": sorted(row["symbol"] for row in short_candidates)},
+               ensure_ascii=False), encoding="utf-8",
+)
+print(f"Board: {len(focus)} focus, {len(long_candidates)} long-term, {len(short_candidates)} short-term candidates")
 (OUTPUT / "overview.json").write_text(
     json.dumps(records(f"SELECT symbol, name, country, sector FROM read_parquet('{universe}') ORDER BY symbol"), ensure_ascii=False),
     encoding="utf-8",

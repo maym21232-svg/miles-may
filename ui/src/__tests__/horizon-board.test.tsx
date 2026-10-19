@@ -6,6 +6,10 @@ import type { PaperReport } from "../components/PaperDesk";
 const board: HorizonBoardData = {
   generated_at: 1,
   prices_typical_date: "2026-10-12",
+  focus_count: 397,
+  focus_target: 400,
+  short_count: 75,
+  short_target: 75,
   long: [
     { symbol: "AAA", name: "Alpha", sector: "Information Technology", period: "2026-06-30", piotroski_f: 7, return_on_equity: 0.18 },
     { symbol: "BBB", name: "Beta", sector: "Health Care", period: "2026-03-31", piotroski_f: 6, return_on_equity: 0.12 },
@@ -31,6 +35,7 @@ describe("horizon board", () => {
     const onSelect = vi.fn();
     render(<HorizonBoard board={board} onSelect={onSelect} onAdvanced={vi.fn()} />);
     expect(screen.getByRole("heading", { name: "发现公司" })).toBeVisible();
+    expect(screen.getByText("重点跟踪 397 家 · 短线观察 75 家")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "信息技术" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "医疗保健" })).toBeInTheDocument();
     expect(screen.queryByText("综合分位")).not.toBeInTheDocument();

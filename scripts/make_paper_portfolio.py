@@ -189,7 +189,8 @@ def fill_pending(ledger: dict, rows: dict[str, dict], price_date: str) -> None:
     ledger["positions"] = sorted(positions.values(), key=lambda item: item["symbol"])
 
 
-def advance(ledger: dict, rows: dict[str, dict], price_date: str) -> None:
+def advance(ledger: dict, rows: dict[str, dict], price_date: str,
+            allowed_buys: set[str] | None = None) -> None:
     if ledger["last_price_date"] and price_date <= ledger["last_price_date"]:
         return
     fill_pending(ledger, rows, price_date)
@@ -207,7 +208,7 @@ def advance(ledger: dict, rows: dict[str, dict], price_date: str) -> None:
     if slots > 0:
         candidates = []
         for symbol, row in rows.items():
-            if symbol in held:
+            if symbol in held or (allowed_buys is not None and symbol not in allowed_buys):
                 continue
             reason = buy_reason(row, price_date)
             if reason:
@@ -237,13 +238,20 @@ def run(data_dir: Path, ledger_path: Path, output: Path, today: date) -> dict:
     coverage = (prices.get("typical_symbols") or 0) / symbols if symbols else 0
     expected, next_session_date, next_close_at = session_gate(today)
     ledger = load_ledger(ledger_path)
+    pool_path = data_dir / "focus-pool.json"
+    allowed_buys = None
+    if pool_path.exists():
+        pool = json.loads(pool_path.read_text(encoding="utf-8"))
+        if not isinstance(pool.get("short_symbols"), list):
+            raise ValueError("Short-term research pool is invalid")
+        allowed_buys = set(pool["short_symbols"])
     if not price_date or price_date != expected or coverage < 0.95:
         status = "paused"
         reason = f"行情未覆盖最近一个交易日（预期 {expected}，实际 {price_date or '未知'}）" if price_date != expected else "当日行情覆盖不足 95%"
         rows = {}
     else:
         rows = price_rows(data_dir)
-        advance(ledger, rows, price_date)
+        advance(ledger, rows, price_date, allowed_buys)
         status = "ready"
         reason = None
         ledger_path.parent.mkdir(parents=True, exist_ok=True)
@@ -262,7 +270,7 @@ def run(data_dir: Path, ledger_path: Path, output: Path, today: date) -> dict:
         "pending": ledger["pending"] if status == "ready" else [], "fills": ledger["fills"][-20:],
         "decisions": ledger["decisions"][-20:],
         "last_decision_date": ledger["last_price_date"],
-        "method": "收盘后按财报、流动性、20/60日趋势及放量条件筛选；次交易日开盘价加减0.1%模拟滑点成交；不含税费、分红、拆股。",
+        "method": "收盘后仅在短线观察池中按财报、流动性、20/60日趋势及放量条件筛选模拟买入；已有持仓仍独立检查卖出；次交易日开盘价加减0.1%模拟滑点成交；不含税费、分红、拆股。",
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2, default=str) + "\n", encoding="utf-8")

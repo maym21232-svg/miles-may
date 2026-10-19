@@ -50,6 +50,16 @@ class PaperPortfolioTest(unittest.TestCase):
         self.assertEqual(ledger["positions"], [])
         self.assertEqual(ledger["fills"][-1]["side"], "sell")
 
+    def test_buy_pool_restricts_new_buys_but_never_blocks_sells(self):
+        ledger = empty_ledger()
+        advance(ledger, {"TEST": row("2026-10-12")}, "2026-10-12", {"OTHER"})
+        self.assertEqual(ledger["pending"], [])
+        ledger["positions"] = [{"symbol": "TEST", "name": "Test Company", "sector": "Industrials",
+                                "shares": 100, "entry_price": 120, "entry_date": "2026-10-09"}]
+        advance(ledger, {"TEST": row("2026-10-13", close=100)}, "2026-10-13", set())
+        self.assertEqual([(item["side"], item["symbol"]) for item in ledger["pending"]],
+                         [("sell", "TEST")])
+
     def test_expired_order_is_never_filled_late(self):
         ledger = empty_ledger()
         advance(ledger, {"TEST": row("2026-10-12")}, "2026-10-12")

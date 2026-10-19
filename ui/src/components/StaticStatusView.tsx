@@ -35,6 +35,8 @@ export function StaticStatusView({ pref, onPref }: Props) {
       </p>}
       <dl className="status-facts">
         <div><dt>覆盖范围</dt><dd>{site ? `${site.snapshot_symbols.toLocaleString("zh-CN")} 家美国交易所上市公司` : data === "loading" ? "加载中…" : "—"}</dd></div>
+        {site?.focus_count && <div><dt>重点跟踪</dt><dd>{site.focus_count.toLocaleString("zh-CN")} 家按财报质量与行业分散选取；其余公司仍可搜索和高级筛选</dd></div>}
+        {site?.short_target && <div><dt>短线观察</dt><dd>最多 {site.short_target} 家；每日按有效收盘价复核，名单会变动</dd></div>}
         <div><dt>快照生成</dt><dd>{site ? new Date(site.generated_at * 1000).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : "—"}</dd></div>
         {site?.bundle_built_at && <div><dt>网站重建</dt><dd>{new Date(site.bundle_built_at * 1000).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}</dd></div>}
         <div><dt>个别最新收盘</dt><dd>{site?.prices ? site.prices.max_date : "暂无价格历史"}</dd></div>
@@ -46,7 +48,7 @@ export function StaticStatusView({ pref, onPref }: Props) {
       </dl>
       <section className="status-note">
         <h2>使用说明</h2>
-        <p>快照生成时间不等于公司财报日期，也不代表所有股票的价格都更新至同一天。每日构建只会检查上游数据，不能保证每只股票的价格同步更新。这里展示的是历史收盘价，不是盘中实时行情；重要指标请以原始申报为准。价格数据的公开再分发需另行核查授权。</p>
+        <p>重点池和短线观察池是研究范围，不是上涨概率。全市场基础数据仍从上游快照同步；缩小跟踪名单暂未减少上游下载量。快照生成时间不等于公司财报日期，也不代表所有股票的价格都更新至同一天。每日构建只会检查上游数据，不能保证每只股票的价格同步更新。这里展示的是历史收盘价，不是盘中实时行情；重要指标请以原始申报为准。价格数据的公开再分发需另行核查授权。</p>
       </section>
       <AppearanceSection pref={pref} onPref={onPref} />
     </main>

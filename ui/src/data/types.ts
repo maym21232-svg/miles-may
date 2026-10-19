@@ -102,6 +102,9 @@ export interface SiteManifest {
   universe_rows: number;
   snapshot_rows: number;
   snapshot_symbols: number;
+  focus_count?: number;
+  focus_target?: number;
+  short_target?: number;
   /** covered companies by region — optional: older manifests don't carry it */
   snapshot_by_region?: Record<string, number> | null;
   prices: PriceManifest | null;
