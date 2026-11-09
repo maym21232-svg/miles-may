@@ -2,28 +2,9 @@
   "version": 1,
   "starting_cash": 100000.0,
   "cash": 100000.0,
-  "last_price_date": "2026-10-30",
+  "last_price_date": "2026-11-06",
   "positions": [],
-  "pending": [
-    {
-      "side": "buy",
-      "symbol": "CNQ",
-      "name": "Canadian Natural Resources Limited",
-      "sector": "Energy",
-      "reason": "财务质量 7/9；20日趋势 +15.8%、60日 +23.5%；放量但未追涨",
-      "reference_close": 56.11,
-      "decision_date": "2026-10-30"
-    },
-    {
-      "side": "buy",
-      "symbol": "SN",
-      "name": "SharkNinja Inc.",
-      "sector": "Consumer Discretionary",
-      "reason": "财务质量 7/9；20日趋势 +13.9%、60日 +15.6%；放量但未追涨",
-      "reference_close": 208.0,
-      "decision_date": "2026-10-30"
-    }
-  ],
+  "pending": [],
   "decisions": [
     {
       "date": "2026-10-16",
@@ -61,6 +42,10 @@
           "decision_date": "2026-10-30"
         }
       ]
+    },
+    {
+      "date": "2026-11-06",
+      "orders": []
     }
   ],
   "fills": []
