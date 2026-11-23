@@ -2,19 +2,9 @@
   "version": 1,
   "starting_cash": 100000.0,
   "cash": 100000.0,
-  "last_price_date": "2026-11-13",
+  "last_price_date": "2026-11-20",
   "positions": [],
-  "pending": [
-    {
-      "side": "buy",
-      "symbol": "ATAT",
-      "name": "Atour Lifestyle Holdings Limited",
-      "sector": "Consumer Discretionary",
-      "reason": "财务质量 8/9；20日趋势 +14.1%、60日 +11.3%；放量但未追涨",
-      "reference_close": 38.13,
-      "decision_date": "2026-11-13"
-    }
-  ],
+  "pending": [],
   "decisions": [
     {
       "date": "2026-10-16",
@@ -70,6 +60,10 @@
           "decision_date": "2026-11-13"
         }
       ]
+    },
+    {
+      "date": "2026-11-20",
+      "orders": []
     }
   ],
   "fills": []
